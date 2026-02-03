@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft: True Survival v19 (Wall Fix)</title>
+    <title>Minecraft: True Survival v20 (Laser & Clip Fix)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
@@ -134,7 +134,16 @@ function playSound(type) {
     } 
     else {
         const osc = audioCtx.createOscillator(); osc.connect(g);
-        if(type === 'shoot') { osc.type='square'; osc.frequency.setValueAtTime(800, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.1); osc.start(); osc.stop(t+0.1); }
+        
+        // --- ИСПРАВЛЕННЫЙ ЗВУК: ЛАЗЕРНЫЙ ПИУ ---
+        if(type === 'shoot') { 
+            osc.type='sawtooth'; 
+            osc.frequency.setValueAtTime(1200, t); // Высокий старт
+            osc.frequency.exponentialRampToValueAtTime(100, t + 0.15); // Быстрый спуск
+            g.gain.setValueAtTime(0.2, t); 
+            g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+            osc.start(); osc.stop(t + 0.15); 
+        }
         else if(type === 'sword_hit') { // Удар мечом (глухой)
             osc.type='square'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.linearRampToValueAtTime(0, t + 0.1); osc.start(); osc.stop(t + 0.1);
         }
@@ -225,7 +234,7 @@ function createHouse(x, y, z) {
     const grp = new THREE.Group();
     const wallMat = new THREE.MeshLambertMaterial({map: textures.wood}); const floorMat = new THREE.MeshLambertMaterial({map: textures.planks});
     
-    // Стены для коллизии (толщина 0.5)
+    // Стены для коллизии
     const floor = new THREE.Mesh(new THREE.BoxGeometry(7, 0.2, 7), floorMat); floor.position.y = 0.1; grp.add(floor);
     const w1 = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 0.5), wallMat); w1.position.set(0,2,-3.5); grp.add(w1);
     const w2 = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 0.5), wallMat); w2.position.set(0,2,3.5); grp.add(w2);
@@ -422,7 +431,7 @@ function spawnParticles(pos, color) { for(let i=0; i<10; i++) { const p = new TH
 function handleKeys(code, state) { if(code === 'KeyW') move.fwd = state; if(code === 'KeyS') move.bwd = state; if(code === 'KeyA') move.left = state; if(code === 'KeyD') move.right = state; }
 function onMouseMove(e) { if(document.pointerLockElement && !isDead) { yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002; pitch = Math.max(-1.5, Math.min(1.5, pitch)); camera.rotation.set(pitch, yaw, 0); } }
 
-// --- ИСПРАВЛЕННАЯ ФИЗИКА СТЕН ---
+// --- ИСПРАВЛЕННАЯ ФИЗИКА СТЕН (БОЛЬШЕ РАДИУС) ---
 function updatePhysics(delta) {
     player.speed = move.sprint ? 18 : 10;
     const direction = new THREE.Vector3();
@@ -440,8 +449,8 @@ function updatePhysics(delta) {
     let nextZ = camera.position.z + (direction.z + player.vel.z * delta);
     let canMoveX = true, canMoveZ = true;
 
-    // ПРОВЕРКА СТЕН (ПО КОНТУРУ)
-    const wallT = 0.6; // Толщина столкновения
+    // ТОЛЩИНА СТЕН УВЕЛИЧЕНА ДО 0.8 ДЛЯ ПРЕДОТВРАЩЕНИЯ CLIPPING
+    const wallT = 0.8; 
     for(let h of houses) {
         if(h.hp <= 0) continue;
         
