@@ -3,130 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blocky Island Shooter</title>
+    <title>Minecraft Island Quest</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Courier New', monospace; }
-        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; color: white; text-shadow: 2px 2px #000; }
+        #stats { position: absolute; top: 20px; left: 20px; font-size: 1.5em; }
         #question-ui {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.9); border: 4px solid #333;
-            padding: 10px 30px; border-radius: 0px; color: #333; text-align: center;
-            box-shadow: 5px 5px 0px #000;
+            background: rgba(0, 0, 0, 0.6); border: 4px solid #fff;
+            padding: 15px 40px; text-align: center; pointer-events: none;
         }
         #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 30px; height: 30px;
+            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
             border: 2px solid white; transform: translate(-50%, -50%);
-            mix-blend-mode: difference;
         }
     </style>
 </head>
 <body>
 
 <div id="hud">
+    <div id="stats">ОЧКИ: <span id="score">0</span></div>
     <div id="question-ui">
-        <div id="q-text" style="font-size: 1.2em; font-weight: bold;">ЗАГРУЗКА ОСТРОВА...</div>
+        <div id="q-text" style="font-size: 1.5em; font-weight: bold;">ЗАГРУЗКА...</div>
     </div>
     <div id="crosshair"></div>
 </div>
 
 <script>
-let scene, camera, renderer, gun, currentQ = 0;
-let targets = [];
+let scene, camera, renderer, gun, flash, score = 0, currentQ = 0;
+let targets = [], clouds = [];
 let move = { fwd: false, bwd: false, left: false, right: false };
+let pitch = 0, yaw = 0; // Для правильного вращения без наклонов
 const clock = new THREE.Clock();
 
 const config = {
     questions: [
-        { q: "Как называется столица Франции?", a: ["Лондон", "Париж", "Берлин"], c: 1 },
-        { q: "2 + 2 * 2 = ?", a: ["8", "4", "6"], c: 2 }
+        { q: "Что едят криперы?", a: ["Порох", "Траву", "Игроков"], c: 2 },
+        { q: "Главный враг Стива?", a: ["Эндермен", "Херобрин", "Зомби"], c: 1 },
+        { q: "Из чего крафтят верстак?", a: ["Камень", "Доски", "Железо"], c: 1 }
     ]
 };
 
+// --- ЗВУКОВАЯ СИСТЕМА ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(freq, type, duration, vol=0.1) {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + duration);
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+
 function init() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB); // Небо
-    
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 1.6, 10); // Рост человека
+    scene.background = new THREE.Color(0x87CEEB);
+    scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
 
-    renderer = new THREE.WebGLRenderer({ antialias: false }); // Выключаем сглаживание для пиксельности
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.rotation.order = 'YXZ'; // Важно для FPS управления
+
+    renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
     // Свет
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambient);
-    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-    sun.position.set(10, 20, 10);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 1);
+    sun.position.set(50, 100, 50);
+    sun.castShadow = true;
     scene.add(sun);
 
-    // Остров (Земля)
-    createIsland();
+    // Солнце (визуальное)
+    const sunG = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 1), new THREE.MeshBasicMaterial({color: 0xffffaa}));
+    sunG.position.set(40, 60, -80);
+    scene.add(sunG);
 
-    // Оружие
-    createBlockGun();
-
+    createWorld();
+    createGun();
+    
     window.addEventListener('keydown', e => handleKeys(e.code, true));
     window.addEventListener('keyup', e => handleKeys(e.code, false));
     window.addEventListener('mousedown', shoot);
     window.addEventListener('mousemove', onMouseMove);
-
+    
     loadQuestion();
     animate();
 }
 
-function createIsland() {
-    // Трава
-    const groundGeo = new THREE.BoxGeometry(40, 1, 40);
-    const groundMat = new THREE.MeshLambertMaterial({color: 0x567d46});
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.position.y = -0.5;
+function createWorld() {
+    // Остров
+    const ground = new THREE.Mesh(new THREE.BoxGeometry(60, 2, 60), new THREE.MeshLambertMaterial({color: 0x567d46}));
+    ground.position.y = -1;
+    ground.receiveShadow = true;
     scene.add(ground);
 
-    // Песок по краям
-    const sandGeo = new THREE.BoxGeometry(42, 0.8, 42);
-    const sandMat = new THREE.MeshLambertMaterial({color: 0xd2b48c});
-    const sand = new THREE.Mesh(sandGeo, sandMat);
-    sand.position.y = -0.6;
-    scene.add(sand);
+    // Деревья
+    for(let i=0; i<8; i++) {
+        const tree = new THREE.Group();
+        const trunk = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 1), new THREE.MeshLambertMaterial({color: 0x4b3621}));
+        const leaves = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshLambertMaterial({color: 0x2d5a27}));
+        leaves.position.y = 3;
+        tree.add(trunk, leaves);
+        tree.position.set(Math.random()*40-20, 1, Math.random()*40-20);
+        scene.add(tree);
+    }
+
+    // Облака
+    for(let i=0; i<15; i++) {
+        const cloud = new THREE.Mesh(new THREE.BoxGeometry(10, 2, 6), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.8}));
+        cloud.position.set(Math.random()*200-100, 30 + Math.random()*10, Math.random()*200-100);
+        scene.add(cloud);
+        clouds.push(cloud);
+    }
 }
 
-function createBlockGun() {
+function createGun() {
     gun = new THREE.Group();
-    const main = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.7), new THREE.MeshLambertMaterial({color: 0x333333}));
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.15), new THREE.MeshLambertMaterial({color: 0x555555}));
-    handle.position.set(0, -0.2, 0.2);
-    gun.add(main, handle);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0x222222}));
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.1), new THREE.MeshLambertMaterial({color: 0x444444}));
+    tip.position.z = -0.4;
+    gun.add(body, tip);
+
+    flash = new THREE.PointLight(0xffaa00, 0, 5);
+    flash.position.z = -0.5;
+    gun.add(flash);
+    
     scene.add(gun);
 }
 
 function createMob(text) {
     const mob = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({color: 0x2e8b57});
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.4), mat);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), mat);
+    head.position.y = 0.9;
     
-    // Тело (в стиле Майнкрафт)
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 0.6), new THREE.MeshLambertMaterial({color: 0x2e8b57}));
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshLambertMaterial({color: 0x2e8b57}));
-    head.position.y = 1.2;
-    
-    // Глаза
-    const eyeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.1);
-    const eyeMat = new THREE.MeshBasicMaterial({color: 0x000000});
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.2, 1.3, 0.4);
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.2, 1.3, 0.4);
+    const faceG = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    const eye = new THREE.Mesh(faceG, new THREE.MeshBasicMaterial({color: 0x000000}));
+    const eyeL = eye.clone(); eyeL.position.set(-0.15, 1, 0.3);
+    const eyeR = eye.clone(); eyeR.position.set(0.15, 1, 0.3);
     
     mob.add(body, head, eyeL, eyeR);
 
-    // Текст над головой
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 512; canvas.height = 128;
-    ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = 4;
-    ctx.font = 'bold 60px Arial'; ctx.textAlign = 'center';
-    ctx.strokeText(text, 256, 80); ctx.fillText(text, 256, 80);
-    
+    canvas.width = 256; canvas.height = 64;
+    ctx.fillStyle = 'white'; ctx.font = 'bold 40px Arial'; ctx.textAlign = 'center';
+    ctx.fillText(text, 128, 45);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
-    sprite.scale.set(4, 1, 1); sprite.position.y = 2.2;
+    sprite.scale.set(2, 0.5, 1); sprite.position.y = 1.6;
     mob.add(sprite);
 
     return mob;
@@ -140,40 +171,49 @@ function loadQuestion() {
 
     qData.a.forEach((ans, i) => {
         const obj = createMob(ans);
-        // Случайная позиция на острове
-        obj.position.set((Math.random()-0.5)*30, 0, (Math.random()-0.5)*30);
+        obj.position.set(Math.random()*40-20, 0.6, Math.random()*40-20);
         scene.add(obj);
-        targets.push({ 
-            obj, 
-            isCorrect: i === qData.c, 
-            speed: 0.02 + Math.random()*0.03,
-            angle: Math.random() * Math.PI * 2 
-        });
+        targets.push({ obj, isCorrect: i === qData.c, angle: Math.random()*Math.PI*2 });
     });
 }
 
+function onMouseMove(e) {
+    if (document.pointerLockElement) {
+        yaw -= e.movementX * 0.002;
+        pitch -= e.movementY * 0.002;
+        pitch = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, pitch));
+        
+        camera.rotation.set(pitch, yaw, 0); // Обнуляем Z, чтобы не падать набок
+    }
+}
+
 function shoot() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    playSound(400, 'square', 0.1);
+    
+    // Анимация отдачи
+    gun.position.z += 0.3;
+    flash.intensity = 2;
+    setTimeout(() => flash.intensity = 0, 50);
+
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-    const intersects = raycaster.intersectObjects(targets.map(t => t.obj), true);
+    const hits = raycaster.intersectObjects(targets.map(t => t.obj), true);
 
-    // Эффект выстрела
-    gun.position.z += 0.2;
-
-    if(intersects.length > 0) {
-        let hit = intersects[0].object;
-        while(hit.parent && hit.type !== 'Group') hit = hit.parent;
-        const target = targets.find(t => t.obj === hit);
+    if(hits.length > 0) {
+        let hitObj = hits[0].object;
+        while(hitObj.parent && hitObj.type !== 'Group') hitObj = hitObj.parent;
+        const target = targets.find(t => t.obj === hitObj);
 
         if(target.isCorrect) {
+            playSound(600, 'sine', 0.2, 0.2);
+            score += 100;
+            document.getElementById('score').innerText = score;
             currentQ = (currentQ + 1) % config.questions.length;
             loadQuestion();
         } else {
-            // Моб "злится" (краснеет)
-            hit.children.forEach(c => { if(c.material) c.material.color?.set(0xff0000) });
-            setTimeout(() => {
-                hit.children.forEach(c => { if(c.material) c.material.color?.set(0x2e8b57) });
-            }, 500);
+            playSound(100, 'sawtooth', 0.3);
+            hitObj.position.y += 0.5; // Прыжок от испуга
         }
     }
 }
@@ -185,48 +225,45 @@ function handleKeys(code, isPressed) {
     if(code === 'KeyD') move.right = isPressed;
 }
 
-function onMouseMove(e) {
-    if (document.pointerLockElement) {
-        camera.rotation.y -= e.movementX * 0.002;
-        let newX = camera.rotation.x - e.movementY * 0.002;
-        camera.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, newX));
-    }
-}
-
 function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
+    const time = Date.now() * 0.002;
 
-    // Движение игрока (с ограничением по острову)
-    const pSpeed = 5 * delta;
-    const oldPos = camera.position.clone();
-    if(move.fwd) camera.translateZ(-pSpeed);
-    if(move.bwd) camera.translateZ(pSpeed);
-    if(move.left) camera.translateX(-pSpeed);
-    if(move.right) camera.translateX(pSpeed);
-    camera.position.y = 1.6; // Держим уровень глаз
-    
+    // Ходьба
+    const speed = 8 * delta;
+    if(move.fwd) camera.translateZ(-speed);
+    if(move.bwd) camera.translateZ(speed);
+    if(move.left) camera.translateX(-speed);
+    if(move.right) camera.translateX(speed);
+    camera.position.y = 1.6;
+
     // Границы острова
-    if(Math.abs(camera.position.x) > 19 || Math.abs(camera.position.z) > 19) {
-        camera.position.copy(oldPos);
-    }
+    camera.position.x = Math.max(-28, Math.min(28, camera.position.x));
+    camera.position.z = Math.max(-28, Math.min(28, camera.position.z));
 
-    // Привязка пушки
+    // Анимация пушки (покачивание + возврат отдачи)
     gun.position.copy(camera.position);
     gun.quaternion.copy(camera.quaternion);
-    gun.translateX(0.3); gun.translateY(-0.3); gun.translateZ(-0.5);
-    gun.position.z = THREE.MathUtils.lerp(gun.position.z, gun.position.z, 0.1);
+    const bobbing = (move.fwd || move.bwd || move.left || move.right) ? Math.sin(time*2)*0.02 : 0;
+    gun.translateX(0.35); 
+    gun.translateY(-0.3 + bobbing); 
+    gun.translateZ(-0.6);
+    gun.position.lerp(gun.position, 0.1); 
 
-    // Анимация мобов (они ходят)
+    // Мобы
     targets.forEach(t => {
-        t.obj.position.x += Math.cos(t.angle) * t.speed;
-        t.obj.position.z += Math.sin(t.angle) * t.speed;
-        t.obj.lookAt(camera.position.x, 0, camera.position.z);
-        
-        // Чтобы не убегали с острова
-        if(Math.abs(t.obj.position.x) > 18 || Math.abs(t.obj.position.z) > 18) {
-            t.angle += Math.PI;
-        }
+        t.obj.position.x += Math.cos(t.angle) * 0.02;
+        t.obj.position.z += Math.sin(t.angle) * 0.02;
+        t.obj.lookAt(camera.position.x, 0.6, camera.position.z);
+        if(Math.abs(t.obj.position.x) > 25 || Math.abs(t.obj.position.z) > 25) t.angle += Math.PI;
+        t.obj.position.y = THREE.MathUtils.lerp(t.obj.position.y, 0.6, 0.1);
+    });
+
+    // Облака
+    clouds.forEach(c => {
+        c.position.x += 0.01;
+        if(c.position.x > 100) c.position.x = -100;
     });
 
     renderer.render(scene, camera);
