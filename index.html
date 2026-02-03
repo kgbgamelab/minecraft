@@ -2,24 +2,21 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft: True Survival v5</title>
+    <title>Minecraft: True Survival v6</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
         
-        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; transition: transform 0.1s; }
-        .shake { animation: shake 0.5s; }
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            100% { transform: translate(0, 0) rotate(0deg); }
+        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* Всплывающий текст */
+        .float-text {
+            position: absolute; color: #ffff55; font-size: 40px; font-weight: bold;
+            text-shadow: 3px 3px 0 #000; pointer-events: none;
+            animation: floatUp 1s forwards;
         }
+        @keyframes floatUp { to { transform: translateY(-100px); opacity: 0; } }
 
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
@@ -33,7 +30,7 @@
             width: 600px; text-align: center;
         }
         
-        #hearts-container { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
+        .hearts { display: flex; gap: 4px; justify-content: center; margin-bottom: 5px; }
         .heart {
             width: 32px; height: 32px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23ff0000" stroke="black" stroke-width="0.5" d="M2 1h2v1h2V1h2v2H7v1H6v1H5v1H4V5H3V4H2V2h2z"/></svg>');
             background-size: contain; image-rendering: pixelated;
@@ -59,12 +56,15 @@
         #q-text { font-size: 32px; color: #ffff55; text-shadow: 2px 2px 0 #333; }
 
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; }
+        #fire-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 40%; background: linear-gradient(transparent, rgba(255, 100, 0, 0.5)); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        
         #game-over { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(50,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 999; }
     </style>
 </head>
 <body>
 
 <div id="damage-overlay"></div>
+<div id="fire-overlay"></div>
 
 <div id="hud">
     <div id="quest-box">
@@ -83,7 +83,7 @@
         <div id="xp-bar"><div id="xp-fill"></div></div>
         <div id="hotbar">
             <div class="slot active" id="slot-0">🔫</div>
-            <div class="slot" id="slot-1"></div>
+            <div class="slot" id="slot-1">🗡️</div>
             <div class="slot" id="slot-2"></div>
         </div>
     </div>
@@ -97,99 +97,73 @@
 <script>
 let scene, camera, renderer, weaponGroup, flash;
 let score = 0, currentQ = 0, health = 5, combo = 0;
-let targets = [], particles = [], bonuses = [], items = [], birds = [];
-let move = { fwd: false, bwd: false, left: false, right: false };
-let vel = new THREE.Vector3();
+let targets = [], particles = [], bonuses = [], projectiles = [], floatingTexts = [];
+let move = { fwd: false, bwd: false, left: false, right: false, sprint: false, jump: false };
+let player = { vel: new THREE.Vector3(), onGround: false, height: 1.7, speed: 0 };
 let pitch = 0, yaw = 0;
 let isDead = false;
 let lastDamageTime = 0;
 let stepTimer = 0;
 let swingProgress = 0, isSwinging = false;
 let currentWeaponType = 'gun';
-let inventory = ['gun']; 
 
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- ЗВУКОВАЯ СИСТЕМА (FIXED) ---
-// Ссылка через CDN для обхода CORS
-const FOOTSTEP_URL = 'https://cdn.jsdelivr.net/gh/kgbgamelab/minecraft@main/footsteps.wav';
-let footstepAudioBuffer = null;
-
-// Загрузка шагов
-fetch(FOOTSTEP_URL)
-    .then(response => response.arrayBuffer())
-    .then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer))
-    .then(audioBuffer => { footstepAudioBuffer = audioBuffer; })
-    .catch(e => console.log("Ошибка звука шагов:", e));
-
+// --- АУДИО СИСТЕМА 2.0 (ЧИСТЫЙ ЗВУК) ---
 function playSound(type) {
     if(audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    g.connect(audioCtx.destination);
+    osc.connect(g); g.connect(audioCtx.destination);
 
-    if(type === 'step' && footstepAudioBuffer) {
-        const src = audioCtx.createBufferSource();
-        src.buffer = footstepAudioBuffer;
-        // Случайная высота тона для реализма
-        src.playbackRate.value = 0.9 + Math.random() * 0.2;
-        g.gain.value = 0.6;
-        src.connect(g);
-        src.start(0);
-        src.stop(audioCtx.currentTime + 0.3); // Играем только кусочек
-    } 
-    else if (type === 'hit') { // Глухой удар
-        const osc = audioCtx.createOscillator();
-        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        g.gain.setValueAtTime(1, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.connect(g); osc.start();
-    }
-    else if (type === 'sword') { // Свист меча
-        const osc = audioCtx.createOscillator();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
-        g.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
-        osc.connect(g); osc.start();
-    }
-    else if (type === 'shot') { // Выстрел (пиу)
-        const osc = audioCtx.createOscillator();
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
-        g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.connect(g); osc.start();
-    }
-    else if (type === 'loot') { // Дзынь
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-        g.gain.setValueAtTime(0.5, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        osc.connect(g); osc.start();
+    if (type === 'step') {
+        osc.frequency.setValueAtTime(100 + Math.random()*50, t);
+        g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.start(); osc.stop(t + 0.1);
+    } else if (type === 'jump') {
+        osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(300, t + 0.2);
+        g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t + 0.2);
+        osc.start(); osc.stop(t + 0.2);
+    } else if (type === 'shoot') { // Выстрел пистолета
+        osc.type = 'square'; osc.frequency.setValueAtTime(800, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+        g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.start(); osc.stop(t + 0.1);
+    } else if (type === 'bow') { // Звук лука (скелет)
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(600, t); osc.frequency.exponentialRampToValueAtTime(200, t + 0.2);
+        g.gain.setValueAtTime(0.2, t); g.gain.linearRampToValueAtTime(0, t + 0.2);
+        osc.start(); osc.stop(t + 0.2);
+    } else if (type === 'loot') { // Дзынь
+        osc.type = 'sine'; osc.frequency.setValueAtTime(1200, t); osc.frequency.setValueAtTime(1800, t + 0.1);
+        g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+        osc.start(); osc.stop(t + 0.5);
+    } else if (type === 'hit') {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(50, t + 0.1);
+        g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+        osc.start(); osc.stop(t + 0.2);
     }
 }
 
 // --- ТЕКСТУРЫ ---
 function createTexture(type) {
     const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
-    const fillNoise = (c, v) => { ctx.fillStyle = c; ctx.fillRect(0,0,64,64); for(let i=0; i<400; i++) ctx.fillStyle=`rgba(0,0,0,${Math.random()*v})`, ctx.fillRect(Math.random()*64,Math.random()*64,4,4); };
+    const fillNoise = (c) => { ctx.fillStyle = c; ctx.fillRect(0,0,64,64); for(let i=0; i<400; i++) { ctx.fillStyle=`rgba(0,0,0,0.1)`; ctx.fillRect(Math.random()*64,Math.random()*64,4,4); }};
 
-    if(type === 'grass_top') { fillNoise('#5da34b', 0.1); ctx.fillStyle='#4a8f3a'; for(let i=0;i<50;i++) ctx.fillRect(Math.random()*60,Math.random()*60,4,4); }
-    else if (type === 'dirt') fillNoise('#6d4e34', 0.2);
-    else if (type === 'side') { fillNoise('#6d4e34', 0.2); ctx.fillStyle='#5da34b'; ctx.fillRect(0,0,64,15); for(let i=0;i<16;i++) ctx.fillRect(i*4,15,4,Math.random()*6); }
+    if(type === 'grass_top') { fillNoise('#5da34b'); ctx.fillStyle='#4a8f3a'; for(let i=0;i<50;i++) ctx.fillRect(Math.random()*60,Math.random()*60,4,4); }
+    else if (type === 'side') { fillNoise('#6d4e34'); ctx.fillStyle='#5da34b'; ctx.fillRect(0,0,64,15); }
     else if (type === 'wood') { ctx.fillStyle='#5c4033'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#4a332a'; for(let i=1;i<4;i++) ctx.fillRect(i*16,0,4,64); }
-    else if (type === 'leaves') { fillNoise('#2d5a27', 0.1); ctx.fillStyle='#1e3c1a'; for(let i=0;i<30;i++) ctx.fillRect(Math.random()*60,Math.random()*60,6,6); }
+    else if (type === 'planks') { ctx.fillStyle='#a07040'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#805020'; ctx.fillRect(0,0,64,2); ctx.fillRect(0,20,64,2); ctx.fillRect(0,40,64,2); }
+    else if (type === 'face') { ctx.fillStyle='#bcaea5'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#222'; ctx.fillRect(10,20,12,12); ctx.fillRect(42,20,12,12); ctx.fillStyle='#633'; ctx.fillRect(20,45,24,8); }
+    else if (type === 'skel_face') { ctx.fillStyle='#ccc'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#222'; ctx.fillRect(10,20,12,12); ctx.fillRect(42,20,12,12); ctx.fillRect(28,35,8,6); ctx.fillRect(15,50,34,4); }
     else if (type === 'chest') { ctx.fillStyle='#6d4e34'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#000'; ctx.strokeRect(2,2,60,60); ctx.fillStyle='#FFD700'; ctx.fillRect(28,24,8,12); }
-    else if (type === 'face') { fillNoise('#bcaea5', 0.05); ctx.fillStyle='#222'; ctx.fillRect(10, 24, 12, 12); ctx.fillRect(42, 24, 12, 12); ctx.fillStyle='#633'; ctx.fillRect(20, 48, 24, 8); }
-
+    
     const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.NearestFilter; return tex;
 }
-const textures = { grass: createTexture('grass_top'), dirt: createTexture('dirt'), side: createTexture('side'), wood: createTexture('wood'), leaves: createTexture('leaves'), chest: createTexture('chest'), face: createTexture('face') };
+const textures = { 
+    grass: createTexture('grass_top'), side: createTexture('side'), wood: createTexture('wood'), 
+    planks: createTexture('planks'), face: createTexture('face'), skel: createTexture('skel_face'), chest: createTexture('chest') 
+};
 
 const config = {
     questions: [
@@ -201,7 +175,7 @@ const config = {
 };
 
 function init() {
-    scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+    scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 20, 80);
     camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000); camera.rotation.order = 'YXZ';
     weaponGroup = new THREE.Group(); scene.add(weaponGroup);
 
@@ -209,19 +183,23 @@ function init() {
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(50, 100, 30); sun.castShadow = true;
-    sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048;
-    sun.shadow.camera.left = -100; sun.shadow.camera.right = 100; sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100; scene.add(sun);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5); scene.add(ambient);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(50, 100, 50); sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048; scene.add(sun);
 
     createWorld(); setWeapon('gun'); spawnLoot(); loadQuestion();
     
     document.addEventListener('keydown', e => {
-        if(e.key === '1') setWeapon('gun');
-        if(e.key === '2' && inventory.includes('sword')) setWeapon('sword');
+        if(e.key === '1') setWeapon('gun'); if(e.key === '2') setWeapon('sword');
+        if(e.code === 'Space') { move.jump = true; }
+        if(e.code === 'ShiftLeft') { move.sprint = true; }
         handleKeys(e.code, true);
     });
-    document.addEventListener('keyup', e => handleKeys(e.code, false));
+    document.addEventListener('keyup', e => {
+        if(e.code === 'Space') move.jump = false;
+        if(e.code === 'ShiftLeft') move.sprint = false;
+        handleKeys(e.code, false);
+    });
     document.addEventListener('mousedown', attack);
     document.addEventListener('mousemove', onMouseMove);
     window.addEventListener('resize', () => { camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
@@ -229,50 +207,49 @@ function init() {
 }
 
 function createWorld() {
-    const floorGeo = new THREE.PlaneGeometry(300, 300);
-    textures.grass.wrapS = THREE.RepeatWrapping; textures.grass.wrapT = THREE.RepeatWrapping; textures.grass.repeat.set(300, 300);
-    const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({map: textures.grass}));
-    floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+    // Пол
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshLambertMaterial({map: textures.grass}));
+    floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; 
+    floor.material.map.wrapS = floor.material.map.wrapT = THREE.RepeatWrapping; floor.material.map.repeat.set(100, 100);
+    scene.add(floor);
 
-    const cloudMat = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.8});
-    for(let i=0; i<30; i++) {
-        const c = new THREE.Mesh(new THREE.BoxGeometry(16, 4, 10), cloudMat);
-        c.position.set(Math.random()*400-200, 40+Math.random()*20, Math.random()*400-200); scene.add(c);
-    }
+    // ДОМ
+    createHouse(20, 0, 20);
 
-    const stoneMat = new THREE.MeshLambertMaterial({color: 0x757575});
-    const woodMat = new THREE.MeshLambertMaterial({map: textures.wood});
-    
+    // Деревья и декор
     for(let i=0; i<40; i++) {
         const x = Math.random()*200-100; const z = Math.random()*200-100;
         if(Math.abs(x)>10 || Math.abs(z)>10) createTree(x, z);
-        if(i < 8) {
-            const h = 10 + Math.random()*15; const m = new THREE.Mesh(new THREE.BoxGeometry(20, h, 20), stoneMat);
-            m.position.set(Math.random()*240-120, h/2, Math.random()*240-120); if(Math.abs(m.position.x) > 40) scene.add(m);
-        }
-        if(i < 5) {
-            const hx = Math.random()*160-80; const hz = Math.random()*160-80;
-            if(Math.abs(hx)>30) {
-                const house = new THREE.Group();
-                const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), woodMat); walls.position.y=2;
-                const roof = new THREE.Mesh(new THREE.ConeGeometry(5, 3, 4), new THREE.MeshLambertMaterial({color: 0x5a3a22})); roof.position.y=5.5; roof.rotation.y=Math.PI/4;
-                house.add(walls, roof); house.position.set(hx, 0, hz); scene.add(house);
-            }
-        }
     }
+}
 
-    // ПТИЦЫ (Черные V)
-    for(let i=0; i<15; i++) {
-        const bird = new THREE.Group();
-        const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.1), new THREE.MeshBasicMaterial({color:0x000}));
-        const w2 = w1.clone();
-        w1.position.x = -0.25; w1.rotation.z = 0.3;
-        w2.position.x = 0.25; w2.rotation.z = -0.3;
-        bird.add(w1, w2);
-        bird.position.set(Math.random()*100-50, 15 + Math.random()*10, Math.random()*100-50);
-        birds.push({m: bird, spd: 3 + Math.random(), off: Math.random()*10});
-        scene.add(bird);
-    }
+function createHouse(x, y, z) {
+    const grp = new THREE.Group();
+    const wallMat = new THREE.MeshLambertMaterial({map: textures.wood});
+    const floorMat = new THREE.MeshLambertMaterial({map: textures.planks});
+    
+    // Пол
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(7, 0.2, 7), floorMat); floor.position.y = 0.1; grp.add(floor);
+    // Стены
+    const w1 = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 0.5), wallMat); w1.position.set(0,2,-3.5); grp.add(w1);
+    const w2 = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 0.5), wallMat); w2.position.set(0,2,3.5); grp.add(w2);
+    const w3 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 7), wallMat); w3.position.set(-3.5,2,0); grp.add(w3);
+    // Стена с дверью
+    const w4a = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 2.5), wallMat); w4a.position.set(3.5,2,-2.25); grp.add(w4a);
+    const w4b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 2.5), wallMat); w4b.position.set(3.5,2,2.25); grp.add(w4b);
+    const w4c = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 2), wallMat); w4c.position.set(3.5,3.5,0); grp.add(w4c);
+    
+    // Мебель
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 2.5), new THREE.MeshLambertMaterial({color: 0xcc0000})); bed.position.set(-2, 0.5, -2); grp.add(bed);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0xffffff})); pillow.position.set(-2, 0.7, -2.7); grp.add(pillow);
+    const table = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 1.5), floorMat); table.position.set(-2, 0.5, 2); grp.add(table);
+
+    // Крыша
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(6, 3, 4), new THREE.MeshLambertMaterial({color: 0x5a3a22})); 
+    roof.position.y = 5.5; roof.rotation.y = Math.PI/4; grp.add(roof);
+
+    grp.position.set(x, y, z);
+    scene.add(grp);
 }
 
 function createTree(x, z) {
@@ -285,8 +262,7 @@ function createTree(x, z) {
 }
 
 function setWeapon(type) {
-    currentWeaponType = type;
-    weaponGroup.clear();
+    currentWeaponType = type; weaponGroup.clear();
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
     if(type==='gun') document.getElementById('slot-0').classList.add('active');
     if(type==='sword') document.getElementById('slot-1').classList.add('active');
@@ -297,9 +273,8 @@ function setWeapon(type) {
         weaponGroup.userData = { offset: new THREE.Vector3(0.4, -0.4, -0.6) };
     } else if (type === 'sword') {
         const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.05), new THREE.MeshLambertMaterial({color: 0x88ccff})); blade.position.y = 0.5;
-        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.1), new THREE.MeshLambertMaterial({color: 0x333})); guard.position.y = 0.1;
         const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033})); handle.position.y = -0.1;
-        weaponGroup.add(blade, guard, handle);
+        weaponGroup.add(blade, handle);
         weaponGroup.userData = { offset: new THREE.Vector3(0.5, -0.5, -0.8) };
     }
 }
@@ -309,72 +284,103 @@ function spawnLoot() {
     for(let i=0; i<8; i++) {
         const b = new THREE.Mesh(chestGeo, chestMat); b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40); b.userData = { type: 'chest' }; scene.add(b); bonuses.push(b);
     }
-    const sword = new THREE.Group();
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.05), new THREE.MeshLambertMaterial({color: 0x88ccff})); const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
-    blade.position.y=0.4; handle.position.y=-0.15; sword.add(blade, handle);
-    sword.position.set(5, 0.5, 5); sword.rotation.z = Math.PI/2; sword.userData = { type: 'sword_item' }; scene.add(sword); items.push(sword);
 }
 
-function createMob(text) {
+function createMob(text, type) {
     const mob = new THREE.Group();
-    const matSkin = new THREE.MeshLambertMaterial({color: 0x5D995D}); const matClothes = new THREE.MeshLambertMaterial({color: 0x3C50C4});
-    const headMats = [matSkin, matSkin, matSkin, matSkin, new THREE.MeshLambertMaterial({map: textures.face}), matSkin];
+    const isSkel = (type === 'skeleton');
+    const skinColor = isSkel ? 0xcccccc : 0x5D995D;
+    const texFace = isSkel ? textures.skel : textures.face;
+    
+    const matSkin = new THREE.MeshLambertMaterial({color: skinColor}); 
+    const matClothes = new THREE.MeshLambertMaterial({color: isSkel ? 0xcccccc : 0x3C50C4});
+    const headMats = [matSkin, matSkin, matSkin, matSkin, new THREE.MeshLambertMaterial({map: texFace}), matSkin];
+
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.25), matClothes); body.position.y = 1.125;
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), headMats); head.position.y = 1.75;
     const armGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2); armGeo.translate(0, -0.3, 0);
-    const armL = new THREE.Mesh(armGeo, matSkin); armL.position.set(-0.35, 1.5, 0); const armR = new THREE.Mesh(armGeo, matSkin); armR.position.set(0.35, 1.5, 0);
+    const armL = new THREE.Mesh(armGeo, matSkin); armL.position.set(-0.35, 1.5, 0); 
+    const armR = new THREE.Mesh(armGeo, matSkin); armR.position.set(0.35, 1.5, 0);
     const legGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2); legGeo.translate(0, -0.375, 0);
-    const legL = new THREE.Mesh(legGeo, matClothes); legL.position.set(-0.15, 0.75, 0); const legR = new THREE.Mesh(legGeo, matClothes); legR.position.set(0.15, 0.75, 0);
+    const legL = new THREE.Mesh(legGeo, matClothes); legL.position.set(-0.15, 0.75, 0); 
+    const legR = new THREE.Mesh(legGeo, matClothes); legR.position.set(0.15, 0.75, 0);
+    
     mob.add(body, head, armL, armR, legL, legR); mob.castShadow = true;
+
+    // Имя
     const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 256; canvas.height = 64;
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64); ctx.font = 'bold 30px monospace'; ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
     ctx.fillText(text, 128, 32);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)})); sprite.scale.set(2, 0.5, 1); sprite.position.y = 2.4; mob.add(sprite);
-    mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false };
+
+    // Если скелет - дать лук
+    if(isSkel) {
+        const bow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 0.1), new THREE.MeshLambertMaterial({color: 0x5c4033}));
+        bow.position.set(0, -0.4, 0.2); armR.add(bow);
+        // Поднять руки для стрельбы
+        armL.rotation.x = -Math.PI/2; armR.rotation.x = -Math.PI/2;
+    }
+
+    mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false, type: type || 'zombie', shotTimer: 0 };
     return mob;
 }
 
 function loadQuestion() {
     targets.forEach(t => scene.remove(t.obj)); targets = [];
     const qData = config.questions[currentQ]; document.getElementById('q-text').innerText = qData.q;
+    
+    // Спавн мобов
     qData.a.forEach((ans, i) => {
-        const mob = createMob(ans); const angle = Math.random() * Math.PI * 2; const radius = 15 + Math.random() * 5;
-        mob.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius); scene.add(mob);
-        targets.push({ obj: mob, isCorrect: i === qData.c, angle: Math.random()*10 });
+        // Правильный - Зомби, Неправильный - Скелет (для опасности)
+        const type = (i === qData.c) ? 'zombie' : 'skeleton';
+        const mob = createMob(ans, type);
+        const angle = Math.random() * Math.PI * 2; const radius = 15 + Math.random() * 5;
+        mob.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
+        scene.add(mob); targets.push({ obj: mob, isCorrect: i === qData.c, angle: Math.random()*10 });
     });
+}
+
+function spawnFloatingText(x, y, z, text, color) {
+    const div = document.createElement('div');
+    div.className = 'float-text'; div.innerText = text; div.style.color = color;
+    document.body.appendChild(div);
+    
+    // Проекция координат
+    const vec = new THREE.Vector3(x, y + 2, z);
+    vec.project(camera);
+    const cx = (vec.x * .5 + .5) * window.innerWidth;
+    const cy = (-(vec.y * .5) + .5) * window.innerHeight;
+    div.style.left = cx + 'px'; div.style.top = cy + 'px';
+    setTimeout(() => div.remove(), 1000);
 }
 
 function attack() {
     if(isDead || isSwinging) return;
-    if(audioCtx.state === 'suspended') audioCtx.resume();
     isSwinging = true; swingProgress = 0;
+    playSound(currentWeaponType === 'gun' ? 'shoot' : 'sword');
 
-    if(currentWeaponType === 'gun') {
-        if(flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); }
-        playSound('shot');
-    } else {
-        playSound('sword');
-    }
+    if(currentWeaponType === 'gun' && flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); }
 
     const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
     const hits = ray.intersectObjects(scene.children, true);
 
     if(hits.length > 0) {
         let hit = hits[0].object; let root = hit; while(root.parent && root.parent.type !== 'Scene') root = root.parent;
-        if(bonuses.includes(root)) { playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root); score += 200; document.getElementById('lvl-num').innerText = score; spawnParticles(root.position, 0xffff00); return; }
-        if(items.includes(root)) {
-            playSound('loot'); scene.remove(root); items = items.filter(i => i !== root);
-            if(root.userData.type === 'sword_item') { inventory.push('sword'); document.getElementById('slot-1').innerText = "🗡️"; }
-            return;
+        
+        if(bonuses.includes(root)) {
+            playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root);
+            score += 200; document.getElementById('lvl-num').innerText = score;
+            spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00");
+            spawnParticles(root.position, 0xffff00); return;
         }
 
         while(hit.parent && hit.type !== 'Group') hit = hit.parent;
         const target = targets.find(t => t.obj === hit);
         if(target) {
             const dist = hit.position.distanceTo(camera.position); if(currentWeaponType !== 'gun' && dist > 4) return; 
-            playSound('hit');
             if(target.isCorrect) {
                 score += 100 + (combo * 50); combo++; document.getElementById('lvl-num').innerText = score; document.getElementById('combo-num').innerText = combo; document.getElementById('xp-fill').style.width = (score%500)/5 + '%';
+                spawnFloatingText(hit.position.x, hit.position.y, hit.position.z, "+100 XP", "#00ff00");
                 spawnParticles(hit.position, 0x00ff00); currentQ = (currentQ + 1) % config.questions.length; loadQuestion();
             } else {
                 combo = 0; document.getElementById('combo-num').innerText = combo; target.obj.userData.isAggro = true; target.obj.userData.parts.body.material.color.set(0xff0000);
@@ -383,83 +389,121 @@ function attack() {
     }
 }
 
-function takeDamage() {
+function shootArrow(fromPos, toPos) {
+    const arrow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1), new THREE.MeshBasicMaterial({color: 0xff4400}));
+    arrow.position.copy(fromPos); arrow.position.y += 1.5;
+    arrow.lookAt(toPos);
+    arrow.userData = { vel: new THREE.Vector3().subVectors(toPos, arrow.position).normalize().multiplyScalar(20) };
+    scene.add(arrow); projectiles.push(arrow);
+    playSound('bow');
+}
+
+function takeDamage(isFire) {
     if(isDead) return; const now = Date.now(); if (now - lastDamageTime < 1000) return; lastDamageTime = now;
     playSound('hit'); health--;
     const hearts = document.querySelectorAll('.heart'); if(hearts[health]) hearts[health].classList.add('lost');
     
-    // Screen Shake Effect
-    const hud = document.getElementById('hud');
-    hud.classList.add('shake');
-    setTimeout(() => hud.classList.remove('shake'), 500);
-
-    const overlay = document.getElementById('damage-overlay'); overlay.style.opacity = 0.6; setTimeout(()=>overlay.style.opacity=0, 300);
-    const dir = new THREE.Vector3(); camera.getWorldDirection(dir); camera.position.add(dir.multiplyScalar(-4)); // Stronger Knockback
+    // Эффекты
+    document.getElementById('hud').classList.add('shake'); setTimeout(()=>document.getElementById('hud').classList.remove('shake'), 500);
+    const ov = isFire ? document.getElementById('fire-overlay') : document.getElementById('damage-overlay');
+    ov.style.opacity = 0.6; setTimeout(()=>ov.style.opacity=0, 300);
+    
+    const dir = new THREE.Vector3(); camera.getWorldDirection(dir); player.vel.add(dir.multiplyScalar(-10)); // Отдача
     if(health <= 0) { isDead = true; document.getElementById('game-over').style.display = 'flex'; document.exitPointerLock(); }
 }
 
-function spawnParticles(pos, color) {
-    for(let i=0; i<10; i++) {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,0.15), new THREE.MeshBasicMaterial({color: color}));
-        p.position.copy(pos); scene.add(p); particles.push({m:p, v: new THREE.Vector3((Math.random()-.5)*0.5, Math.random()*0.5, (Math.random()-.5)*0.5)});
-    }
-}
-
+function spawnParticles(pos, color) { for(let i=0; i<10; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,0.15), new THREE.MeshBasicMaterial({color: color})); p.position.copy(pos); scene.add(p); particles.push({m:p, v: new THREE.Vector3((Math.random()-.5)*0.5, Math.random()*0.5, (Math.random()-.5)*0.5)}); }}
 function handleKeys(code, state) { if(code === 'KeyW') move.fwd = state; if(code === 'KeyS') move.bwd = state; if(code === 'KeyA') move.left = state; if(code === 'KeyD') move.right = state; }
 function onMouseMove(e) { if(document.pointerLockElement && !isDead) { yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002; pitch = Math.max(-1.5, Math.min(1.5, pitch)); camera.rotation.set(pitch, yaw, 0); } }
+
+function updatePhysics(delta) {
+    // Бег
+    player.speed = move.sprint ? 18 : 10;
+    
+    const direction = new THREE.Vector3();
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); forward.y = 0; forward.normalize();
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
+
+    if(move.fwd) direction.add(forward); if(move.bwd) direction.sub(forward);
+    if(move.left) direction.sub(right); if(move.right) direction.add(right);
+    
+    if(direction.length() > 0) direction.normalize().multiplyScalar(player.speed * delta);
+    
+    // Прыжок и Гравитация
+    if(player.onGround && move.jump) { player.vel.y = 12; player.onGround = false; playSound('jump'); }
+    player.vel.y -= 30 * delta; // Гравитация
+
+    camera.position.x += direction.x + (player.vel.x * delta);
+    camera.position.z += direction.z + (player.vel.z * delta);
+    camera.position.y += player.vel.y * delta;
+
+    // Коллизия с полом
+    if(camera.position.y < 1.7) { camera.position.y = 1.7; player.vel.y = 0; player.onGround = true; }
+    player.vel.x *= 0.9; player.vel.z *= 0.9; // Трение
+
+    // Звук шагов
+    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > (move.sprint ? 300 : 500)) {
+        playSound('step'); stepTimer = Date.now();
+    }
+}
 
 function animate() {
     requestAnimationFrame(animate); if(isDead) return;
     const delta = clock.getDelta(); const now = Date.now() / 1000;
 
-    if(move.fwd) vel.z = -10 * delta; else if(move.bwd) vel.z = 10 * delta; else vel.z = 0;
-    if(move.left) vel.x = -10 * delta; else if(move.right) vel.x = 10 * delta; else vel.x = 0;
-    camera.translateX(vel.x); camera.translateZ(vel.z); camera.position.y = 1.7; camera.position.x = Math.max(-95, Math.min(95, camera.position.x)); camera.position.z = Math.max(-95, Math.min(95, camera.position.z));
-    
-    // Footsteps
-    if ((vel.x !== 0 || vel.z !== 0) && now - stepTimer > 0.45) { playSound('step'); stepTimer = now; }
+    updatePhysics(delta);
 
+    // Анимация оружия
     const offset = weaponGroup.userData.offset || new THREE.Vector3(0.5, -0.5, -0.8);
-    const bob = (vel.x!==0 || vel.z!==0) ? Math.sin(now*12)*0.03 : 0;
+    const bob = (move.fwd || move.bwd) ? Math.sin(now*(move.sprint?18:12))*0.03 : 0;
     weaponGroup.position.copy(camera.position); weaponGroup.quaternion.copy(camera.quaternion);
     weaponGroup.translateX(offset.x); weaponGroup.translateY(offset.y + bob); weaponGroup.translateZ(offset.z);
 
     if(isSwinging) {
-        swingProgress += delta * 15;
-        if(swingProgress >= Math.PI) { swingProgress = 0; isSwinging = false; weaponGroup.rotation.x = 0; }
+        swingProgress += delta * 15; if(swingProgress >= Math.PI) { swingProgress = 0; isSwinging = false; weaponGroup.rotation.x = 0; }
         else {
             if(currentWeaponType === 'gun') weaponGroup.position.z += Math.sin(swingProgress)*0.1;
             else weaponGroup.rotateX(-Math.sin(swingProgress));
         }
     } else weaponGroup.rotateX(currentWeaponType !== 'gun' ? Math.PI/8 : 0);
 
+    // Логика мобов и стрел
     targets.forEach(t => {
         const mob = t.obj; const dist = mob.position.distanceTo(camera.position);
         if(mob.userData.isAggro) {
             mob.lookAt(camera.position.x, 0, camera.position.z);
-            if(dist > 2.0) mob.translateZ(5 * delta); else takeDamage();
+            
+            if(mob.userData.type === 'skeleton') { // Скелет стреляет
+                if(dist > 10) mob.translateZ(3 * delta); // Подойди ближе
+                mob.userData.shotTimer += delta;
+                if(mob.userData.shotTimer > 2.0) { // Стрельба раз в 2 сек
+                    shootArrow(mob.position, camera.position);
+                    mob.userData.shotTimer = 0;
+                }
+            } else { // Зомби кусает
+                if(dist > 2.0) mob.translateZ(6 * delta); else takeDamage(false);
+            }
         } else {
             if(dist > 50) mob.lookAt(0,0,0); mob.translateZ(1.5 * delta); mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.01;
         }
-        const speed = mob.userData.isAggro ? 15 : 8; const w = Math.sin(now * speed);
-        const p = mob.userData.parts; p.armL.rotation.x = w; p.armR.rotation.x = -w; p.legL.rotation.x = -w; p.legR.rotation.x = w;
+        
+        // Анимация рук
+        const p = mob.userData.parts; const w = Math.sin(now * (mob.userData.isAggro ? 15 : 8));
+        if(mob.userData.type !== 'skeleton') { p.armL.rotation.x = w; p.armR.rotation.x = -w; }
+        p.legL.rotation.x = -w; p.legR.rotation.x = w;
     });
 
-    birds.forEach(b => {
-        b.m.position.x += Math.cos(now * 0.5 + b.off) * (b.spd*0.05);
-        b.m.position.z += Math.sin(now * 0.5 + b.off) * (b.spd*0.05);
-        b.m.rotation.y = -now * 0.5 - b.off + Math.PI/2;
-        b.m.children[0].rotation.z = 0.2 + Math.sin(now*10)*0.5; 
-        b.m.children[1].rotation.z = -0.2 - Math.sin(now*10)*0.5;
-    });
+    // Стрелы
+    for(let i=projectiles.length-1; i>=0; i--) {
+        const arr = projectiles[i]; arr.position.add(arr.userData.vel.clone().multiplyScalar(delta));
+        if(arr.position.distanceTo(camera.position) < 1.5) { takeDamage(true); scene.remove(arr); projectiles.splice(i,1); }
+        else if(arr.position.y < 0 || arr.position.distanceTo(camera.position) > 100) { scene.remove(arr); projectiles.splice(i,1); }
+    }
 
-    bonuses.forEach(b => b.rotation.y += 0.02); items.forEach(i => i.rotation.y += 0.02);
-    for(let i=particles.length-1; i>=0; i--) { const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; p.m.rotation.x += 0.1; if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); } }
+    bonuses.forEach(b => b.rotation.y += 0.02);
+    for(let i=particles.length-1; i>=0; i--) { const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); } }
     
-    // Day Night Cycle (Optional)
-    const time = now * 0.1;
-    scene.background.setHSL(0.6, 0.5, 0.5 + Math.sin(time)*0.2);
-
+    const time = now * 0.05; scene.background.setHSL(0.6, 0.5, 0.5 + Math.sin(time)*0.2); // День/Ночь
     renderer.render(scene, camera);
 }
 
