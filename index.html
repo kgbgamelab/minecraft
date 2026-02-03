@@ -2,12 +2,11 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft: True Survival v18 (COMPLETE)</title>
+    <title>Minecraft: True Survival v19 (Wall Fix)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
-        
         #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
         
         .float-text {
@@ -116,66 +115,33 @@ let inventory = ['gun'];
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- АУДИО (РЕШЕНИЕ С GITHACK) ---
+// --- АУДИО ---
 const FOOTSTEP_URL = 'https://raw.githack.com/kgbgamelab/minecraft/main/footsteps.wav';
 let footstepBuffer = null;
 const audioLoader = new THREE.AudioLoader();
-audioLoader.load(FOOTSTEP_URL, (b) => { 
-    footstepBuffer = b; 
-    console.log("Звук шагов загружен и готов!"); 
-}, undefined, (err) => console.log("Ошибка загрузки:", err));
+audioLoader.load(FOOTSTEP_URL, (b) => { footstepBuffer = b; console.log("Шаги OK"); });
 
 function playSound(type) {
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const t = audioCtx.currentTime;
-    const g = audioCtx.createGain(); 
-    g.connect(audioCtx.destination);
+    const g = audioCtx.createGain(); g.connect(audioCtx.destination);
 
-    // 1. Шаги из файла (Громко и четко)
     if(type === 'step' && footstepBuffer) {
-        const src = audioCtx.createBufferSource(); 
-        src.buffer = footstepBuffer;
-        src.playbackRate.value = 0.95 + Math.random() * 0.1; 
-        g.gain.value = 1.0; 
-        src.connect(g); 
-        src.start(0);
-        src.stop(t + 0.25); // Обрезаем, чтобы не было "хвоста"
+        const src = audioCtx.createBufferSource(); src.buffer = footstepBuffer;
+        src.playbackRate.value = 0.95 + Math.random() * 0.1; g.gain.value = 1.0; 
+        src.connect(g); src.start(0);
+        src.stop(t + 0.25);
     } 
-    // 2. Синтез для остальных звуков
     else {
         const osc = audioCtx.createOscillator(); osc.connect(g);
-        
-        if(type === 'shoot') { // Лазерный ПИУ
-            osc.type='sawtooth'; 
-            osc.frequency.setValueAtTime(1200, t); 
-            osc.frequency.exponentialRampToValueAtTime(100, t + 0.15); 
-            g.gain.setValueAtTime(0.2, t); 
-            g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-            osc.start(); osc.stop(t + 0.15); 
-        }
+        if(type === 'shoot') { osc.type='square'; osc.frequency.setValueAtTime(800, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.1); osc.start(); osc.stop(t+0.1); }
         else if(type === 'sword_hit') { // Удар мечом (глухой)
-            osc.type='square';
-            osc.frequency.setValueAtTime(100, t);
-            g.gain.setValueAtTime(0.5, t);
-            g.gain.linearRampToValueAtTime(0, t + 0.1);
-            osc.start(); osc.stop(t + 0.1);
+            osc.type='square'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.linearRampToValueAtTime(0, t + 0.1); osc.start(); osc.stop(t + 0.1);
         }
-        else if(type === 'bow') { 
-            osc.type='triangle'; osc.frequency.setValueAtTime(600, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); 
-        }
-        else if(type === 'hit') { 
-            osc.type='sawtooth'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); 
-        }
-        else if(type === 'loot') { 
-            osc.type='sine'; osc.frequency.setValueAtTime(1200, t); g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.5); osc.start(); osc.stop(t+0.5); 
-        }
-        else if(type === 'break') { 
-            osc.type='sawtooth'; osc.frequency.setValueAtTime(50, t); g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.4); osc.start(); osc.stop(t+0.4); 
-        }
-        // Резерв для шагов, если файл не подгрузился
-        else if(type === 'step') { 
-            osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.05); osc.start(); osc.stop(t+0.05); 
-        }
+        else if(type === 'bow') { osc.type='triangle'; osc.frequency.setValueAtTime(600, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); }
+        else if(type === 'hit') { osc.type='sawtooth'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); }
+        else if(type === 'loot') { osc.type='sine'; osc.frequency.setValueAtTime(1200, t); g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.5); osc.start(); osc.stop(t+0.5); }
+        else if(type === 'break') { osc.type='sawtooth'; osc.frequency.setValueAtTime(50, t); g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.4); osc.start(); osc.stop(t+0.4); }
     }
 }
 
@@ -276,7 +242,6 @@ function createHouse(x, y, z) {
         mesh: grp, 
         pos: new THREE.Vector3(x, y, z), 
         hp: 15, 
-        // Границы для коллизий
         bounds: { 
             minX: x - 3.8, maxX: x + 3.8, 
             minZ: z - 3.8, maxZ: z + 3.8 
@@ -313,9 +278,7 @@ function setWeapon(type) {
 
 function spawnLoot() {
     const chestGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8); const chestMat = new THREE.MeshLambertMaterial({map: textures.chest});
-    for(let i=0; i<8; i++) {
-        const b = new THREE.Mesh(chestGeo, chestMat); b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40); b.userData = { type: 'chest' }; scene.add(b); bonuses.push(b);
-    }
+    for(let i=0; i<8; i++) { const b = new THREE.Mesh(chestGeo, chestMat); b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40); b.userData = { type: 'chest' }; scene.add(b); bonuses.push(b); }
     const sword = new THREE.Group();
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.05), new THREE.MeshLambertMaterial({color: 0x88ccff})); const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
     blade.position.y=0.4; handle.position.y=-0.15; sword.add(blade, handle);
@@ -388,10 +351,10 @@ function attack() {
     isSwinging = true; swingProgress = 0;
     
     if(currentWeaponType === 'gun') {
-        playSound('shoot'); // Лазерный пиу
+        playSound('shoot'); 
         if(flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); }
     } else {
-        playSound('sword_hit'); // Удар меча
+        playSound('sword_hit'); 
     }
 
     const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
@@ -399,37 +362,22 @@ function attack() {
 
     if(hits.length > 0) {
         let hit = hits[0].object; let root = hit; while(root.parent && root.parent.type !== 'Scene') root = root.parent;
-        
-        if(bonuses.includes(root)) {
-            playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root);
-            score += 200; document.getElementById('lvl-num').innerText = score;
-            spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00");
-            spawnParticles(root.position, 0xffff00); return;
-        }
-        if(items.includes(root)) {
-            playSound('loot'); scene.remove(root); items = items.filter(i => i !== root);
-            if(root.userData.type === 'sword_item') { inventory.push('sword'); document.getElementById('slot-1').innerText = "🗡️"; }
-            return;
-        }
-
+        if(bonuses.includes(root)) { playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root); score += 200; document.getElementById('lvl-num').innerText = score; spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00"); spawnParticles(root.position, 0xffff00); return; }
+        if(items.includes(root)) { playSound('loot'); scene.remove(root); items = items.filter(i => i !== root); if(root.userData.type === 'sword_item') { inventory.push('sword'); document.getElementById('slot-1').innerText = "🗡️"; } return; }
         while(hit.parent && hit.type !== 'Group') hit = hit.parent;
         const target = targets.find(t => t.obj === hit);
         if(target) {
             const dist = hit.position.distanceTo(camera.position); 
             if(currentWeaponType === 'gun' && dist > 40) return;
             if(currentWeaponType === 'sword' && dist > 6) return;
-
             const isHeadshot = (hits[0].object === target.obj.userData.parts.head);
             if(target.isCorrect) {
                 let pts = 100 + (combo * 50);
                 if (isHeadshot) { pts *= 2; spawnFloatingText(hit.position.x, hit.position.y, hit.position.z, "CRIT!", "#ff3333"); playSound('loot'); } 
                 else { spawnFloatingText(hit.position.x, hit.position.y, hit.position.z, "+"+pts+" XP", "#00ff00"); }
-                score += pts; combo++; document.getElementById('lvl-num').innerText = score; document.getElementById('combo-num').innerText = combo; document.getElementById('xp-fill').style.width = (score%500)/5 + '%';
-                spawnParticles(hit.position, 0x00ff00); currentQ = (currentQ + 1) % config.questions.length; loadQuestion();
+                score += pts; combo++; document.getElementById('lvl-num').innerText = score; document.getElementById('combo-num').innerText = combo; document.getElementById('xp-fill').style.width = (score%500)/5 + '%'; spawnParticles(hit.position, 0x00ff00); currentQ = (currentQ + 1) % config.questions.length; loadQuestion();
             } else {
-                combo = 0; document.getElementById('combo-num').innerText = combo; 
-                target.obj.userData.isAggro = true; target.obj.userData.aggroTimer = 10;
-                target.obj.userData.parts.body.material.color.set(0xff0000);
+                combo = 0; document.getElementById('combo-num').innerText = combo; target.obj.userData.isAggro = true; target.obj.userData.aggroTimer = 10; target.obj.userData.parts.body.material.color.set(0xff0000);
             }
         }
     }
@@ -474,7 +422,7 @@ function spawnParticles(pos, color) { for(let i=0; i<10; i++) { const p = new TH
 function handleKeys(code, state) { if(code === 'KeyW') move.fwd = state; if(code === 'KeyS') move.bwd = state; if(code === 'KeyA') move.left = state; if(code === 'KeyD') move.right = state; }
 function onMouseMove(e) { if(document.pointerLockElement && !isDead) { yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002; pitch = Math.max(-1.5, Math.min(1.5, pitch)); camera.rotation.set(pitch, yaw, 0); } }
 
-// --- ФИЗИКА (СТЕНЫ И КОЛЛИЗИЯ) ---
+// --- ИСПРАВЛЕННАЯ ФИЗИКА СТЕН ---
 function updatePhysics(delta) {
     player.speed = move.sprint ? 18 : 10;
     const direction = new THREE.Vector3();
@@ -492,21 +440,25 @@ function updatePhysics(delta) {
     let nextZ = camera.position.z + (direction.z + player.vel.z * delta);
     let canMoveX = true, canMoveZ = true;
 
-    // ПРОВЕРКА СТЕН (ЖЕСТКАЯ)
+    // ПРОВЕРКА СТЕН (ПО КОНТУРУ)
+    const wallT = 0.6; // Толщина столкновения
     for(let h of houses) {
         if(h.hp <= 0) continue;
-        // Дверь находится на Z = h.pos.z + 3.5, ширина X: +/- 1.5
-        const isNearDoor = (camera.position.x > h.pos.x + 2); // Справа (где дверь)
+        
+        // Левая стена (X-)
+        if (nextX > h.bounds.minX - wallT && nextX < h.bounds.minX + wallT && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) canMoveX = false;
+        
+        // Правая стена (X+) с Дверью
+        if (nextX > h.bounds.maxX - wallT && nextX < h.bounds.maxX + wallT && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) {
+            // Если НЕ в проеме двери
+            if (camera.position.z < h.pos.z - 1.0 || camera.position.z > h.pos.z + 1.0) canMoveX = false;
+        }
 
-        // Вход по X
-        if (nextX > h.bounds.minX && nextX < h.bounds.maxX && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) {
-            // Если мы не у двери - блокируем
-            if (!isNearDoor) canMoveX = false;
-        }
-        // Вход по Z
-        if (camera.position.x > h.bounds.minX && camera.position.x < h.bounds.maxX && nextZ > h.bounds.minZ && nextZ < h.bounds.maxZ) {
-            if (!isNearDoor) canMoveZ = false;
-        }
+        // Задняя стена (Z-)
+        if (camera.position.x > h.bounds.minX && camera.position.x < h.bounds.maxX && nextZ > h.bounds.minZ - wallT && nextZ < h.bounds.minZ + wallT) canMoveZ = false;
+
+        // Передняя стена (Z+)
+        if (camera.position.x > h.bounds.minX && camera.position.x < h.bounds.maxX && nextZ > h.bounds.maxZ - wallT && nextZ < h.bounds.maxZ + wallT) canMoveZ = false;
     }
 
     if(canMoveX) camera.position.x = nextX;
@@ -519,7 +471,7 @@ function updatePhysics(delta) {
     const house = checkHouseProtection(camera.position);
     document.getElementById('house-status').style.display = house ? 'block' : 'none';
 
-    // ШАГИ
+    // Шаги
     const stepInterval = move.sprint ? 300 : 500;
     if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > stepInterval) {
         playSound('step'); stepTimer = Date.now();
