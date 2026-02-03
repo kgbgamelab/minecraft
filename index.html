@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft: True Survival + Loot</title>
+    <title>Minecraft: True Survival Final</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
@@ -11,7 +11,6 @@
         
         /* ИНТЕРФЕЙС */
         #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
-        
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
             transform: translate(-50%, -50%); mix-blend-mode: difference;
@@ -24,9 +23,8 @@
             position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
             width: 600px; height: 120px; text-align: center;
         }
-
-        #stats-row { display: flex; justify-content: space-between; width: 100%; padding: 0 10px; box-sizing: border-box; margin-bottom: 5px; }
-        .hearts { display: flex; gap: 4px; }
+        
+        .hearts { display: flex; gap: 4px; justify-content: center; margin-bottom: 5px; }
         .heart {
             width: 24px; height: 24px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="red" d="M2,1 h2 v1 h2 v-1 h2 v2 h-1 v1 h-1 v1 h-1 v1 h-1 v1 h-2 v-1 h-1 v-1 h-1 v-1 h-1 v-2 h2 z" stroke="black" stroke-width="0.5"/></svg>');
             background-size: cover; image-rendering: pixelated;
@@ -40,7 +38,7 @@
         #hotbar { display: flex; justify-content: center; gap: 4px; background: rgba(0,0,0,0.5); padding: 5px; border: 2px solid #555; }
         .slot {
             width: 50px; height: 50px; background: #8b8b8b; border: 3px solid #373737; border-top-color: #fff; border-left-color: #fff;
-            display: flex; align-items: center; justify-content: center; font-size: 20px; color: gold;
+            display: flex; align-items: center; justify-content: center; font-size: 24px; color: gold;
         }
         .slot.active { border-color: white; }
 
@@ -52,7 +50,6 @@
         #q-text { font-size: 32px; color: #ffff55; text-shadow: 2px 2px 0 #3f3f3f; }
 
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; }
-        
         #game-over { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(100,0,0,0.8); flex-direction: column; align-items: center; justify-content: center; color: white; }
     </style>
 </head>
@@ -63,21 +60,17 @@
 <div id="hud">
     <div id="quest-box">
         <div style="color: #aaa; font-size: 20px;">ЗАДАНИЕ:</div>
-        <div id="q-text">Загрузка...</div>
+        <div id="q-text">Загрузка мира...</div>
     </div>
-
     <div id="crosshair"></div>
-
     <div id="bottom-ui">
         <div id="xp-info">
             <span>LVL: <span id="lvl-num">0</span></span>
             <span style="color: yellow">COMBO: x<span id="combo-num">0</span></span>
         </div>
-        <div id="stats-row">
-            <div class="hearts" id="hearts-container">
-                <div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div>
-                <div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div>
-            </div>
+        <div class="hearts" id="hearts-container">
+            <div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div>
+            <div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div>
         </div>
         <div id="xp-bar"><div id="xp-fill"></div></div>
         <div id="hotbar">
@@ -96,47 +89,75 @@
 </div>
 
 <script>
-let scene, camera, renderer, gun, flash, listener, footstepSound;
+let scene, camera, renderer, gun, flash;
 let score = 0, currentQ = 0, health = 10, combo = 0, lootCount = 0;
-let targets = [], particles = [], bonuses = [];
+let targets = [], particles = [], bonuses = [], birds = [];
 let move = { fwd: false, bwd: false, left: false, right: false };
 let vel = new THREE.Vector3();
 let pitch = 0, yaw = 0;
 let isDead = false;
+let stepTimer = 0; // Таймер для шагов
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- ГЕНЕРАТОР ТЕКСТУР ---
+// --- СИНТЕЗАТОР ШАГОВ (Генератор шума) ---
+function playStepSound() {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    
+    // Создаем буфер шума (0.1 секунды)
+    const bufferSize = audioCtx.sampleRate * 0.1;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    // Заполняем белым шумом
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.5;
+    }
+
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+
+    // Фильтр, чтобы звук был глухим (как по траве)
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 400; // Низкая частота
+
+    // Громкость с затуханием
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    noise.start();
+}
+
+// --- ТЕКСТУРЫ ---
 function createTexture(type) {
     const canvas = document.createElement('canvas');
     canvas.width = 64; canvas.height = 64;
     const ctx = canvas.getContext('2d');
     
-    const fillNoise = (colorBase, variance) => {
-        ctx.fillStyle = colorBase; ctx.fillRect(0,0,64,64);
+    const fillNoise = (c, v) => {
+        ctx.fillStyle = c; ctx.fillRect(0,0,64,64);
         for(let i=0; i<400; i++) {
-            ctx.fillStyle = `rgba(0,0,0,${Math.random()*variance})`;
+            ctx.fillStyle = `rgba(0,0,0,${Math.random()*v})`;
             ctx.fillRect(Math.random()*64, Math.random()*64, 4, 4);
         }
     };
 
-    if(type === 'grass_top') {
-        fillNoise('#4C9141', 0.2); ctx.fillStyle = '#3E7635';
-        for(let i=0; i<50; i++) ctx.fillRect(Math.random()*60, Math.random()*60, 4, 4);
-    } else if (type === 'dirt') fillNoise('#6d4e34', 0.3);
-      else if (type === 'side') {
-        fillNoise('#6d4e34', 0.3); ctx.fillStyle = '#4C9141'; ctx.fillRect(0,0,64,20);
-        for(let i=0; i<20; i++) ctx.fillRect(i*4, 20, 4, Math.random()*8);
-    } else if (type === 'wood') {
-        ctx.fillStyle = '#5c4033'; ctx.fillRect(0,0,64,64); ctx.fillStyle = '#4a332a';
-        for(let i=1; i<4; i++) ctx.fillRect(i*16, 0, 4, 64);
-    } else if (type === 'leaves') {
-        fillNoise('#2d5a27', 0.1); ctx.fillStyle = '#1e3c1a'; 
-        for(let i=0; i<30; i++) ctx.fillRect(Math.random()*60, Math.random()*60, 6, 6);
-    } else if (type === 'gold') {
-        ctx.fillStyle = '#FFD700'; ctx.fillRect(0,0,64,64);
-        ctx.strokeStyle = '#DAA520'; ctx.lineWidth = 4; ctx.strokeRect(2,2,60,60);
-        ctx.fillStyle = '#FFF'; ctx.fillRect(10,10,10,10);
+    if(type === 'grass_top') { fillNoise('#5da34b', 0.1); ctx.fillStyle='#4a8f3a'; for(let i=0;i<50;i++) ctx.fillRect(Math.random()*60,Math.random()*60,4,4); }
+    else if (type === 'dirt') fillNoise('#6d4e34', 0.2);
+    else if (type === 'side') { fillNoise('#6d4e34', 0.2); ctx.fillStyle='#5da34b'; ctx.fillRect(0,0,64,15); for(let i=0;i<16;i++) ctx.fillRect(i*4,15,4,Math.random()*6); }
+    else if (type === 'wood') { ctx.fillStyle='#5c4033'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#4a332a'; for(let i=1;i<4;i++) ctx.fillRect(i*16,0,4,64); }
+    else if (type === 'leaves') { fillNoise('#2d5a27', 0.1); ctx.fillStyle='#1e3c1a'; for(let i=0;i<30;i++) ctx.fillRect(Math.random()*60,Math.random()*60,6,6); }
+    else if (type === 'gold') { ctx.fillStyle='#FFD700'; ctx.fillRect(0,0,64,64); ctx.strokeStyle='#DAA520'; ctx.lineWidth=4; ctx.strokeRect(2,2,60,60); ctx.fillStyle='#FFF'; ctx.fillRect(10,10,10,10); }
+    else if (type === 'face') {
+        fillNoise('#bcaea5', 0.05);
+        ctx.fillStyle='#333'; ctx.fillRect(8, 20, 16, 8); ctx.fillRect(40, 20, 16, 8);
+        ctx.fillStyle='#533'; ctx.fillRect(20, 40, 24, 6);
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -147,61 +168,46 @@ function createTexture(type) {
 const textures = {
     grass: createTexture('grass_top'), dirt: createTexture('dirt'),
     side: createTexture('side'), wood: createTexture('wood'),
-    leaves: createTexture('leaves'), gold: createTexture('gold')
+    leaves: createTexture('leaves'), gold: createTexture('gold'),
+    face: createTexture('face')
 };
 
 const config = {
     questions: [
-        { q: "Какой инструмент добывает камень?", a: ["Лопата", "Кирка", "Топор"], c: 1 },
-        { q: "Из чего делается портал в Ад?", a: ["Обсидиан", "Бедрок", "Лава"], c: 0 },
-        { q: "Как зовут дракона края?", a: ["Джин", "Эндер", "Джин"], c: 1 },
-        { q: "Что выпадает из скелета?", a: ["Гнилая плоть", "Нить", "Кости"], c: 2 }
+        { q: "Где спавнится Гаст?", a: ["Энд", "Ад", "Болото"], c: 1 },
+        { q: "Как крафтится меч?", a: ["2 палки 1 алмаз", "1 палка 2 алмаза", "3 алмаза"], c: 1 },
+        { q: "Зомби горят днем?", a: ["Да", "Нет", "Иногда"], c: 0 },
+        { q: "Кто живет в деревне?", a: ["Пиглины", "Жители", "Эндермены"], c: 1 }
     ]
 };
 
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+    scene.fog = new THREE.Fog(0x87CEEB, 20, 120);
 
     camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
     camera.rotation.order = 'YXZ';
 
-    // ЗВУКОВАЯ СИСТЕМА
-    listener = new THREE.AudioListener();
-    camera.add(listener);
-    const audioLoader = new THREE.AudioLoader();
-    footstepSound = new THREE.Audio(listener);
-    audioLoader.load('https://github.com/kgbgamelab/minecraft/raw/refs/heads/main/footsteps.wav', function(buffer) {
-        footstepSound.setBuffer(buffer);
-        footstepSound.setLoop(true);
-        footstepSound.setVolume(0.5);
-    });
-
     renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
     // Свет
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambient);
-    const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-    sun.position.set(50, 100, 30);
-    sun.castShadow = true;
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.position.set(50, 100, 30); sun.castShadow = true;
     sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048;
+    sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
+    sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
     scene.add(sun);
 
     // Визуальное Солнце
-    const sunGeo = new THREE.BoxGeometry(10, 10, 1);
-    const sunMesh = new THREE.Mesh(sunGeo, new THREE.MeshBasicMaterial({color: 0xffffee}));
-    sunMesh.position.set(40, 80, -60);
-    sunMesh.lookAt(0,0,0);
-    scene.add(sunMesh);
+    const sunG = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 1), new THREE.MeshBasicMaterial({color: 0xffffee}));
+    sunG.position.set(40, 80, -60); scene.add(sunG);
 
     createWorld();
-    createClouds();
     createWeapon();
     spawnBonuses();
     loadQuestion();
@@ -210,38 +216,71 @@ function init() {
     document.addEventListener('keyup', e => handleKeys(e.code, false));
     document.addEventListener('mousedown', shoot);
     document.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth/window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    window.addEventListener('resize', () => { camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
     animate();
 }
 
 function createWorld() {
-    const floorGeo = new THREE.PlaneGeometry(100, 100);
+    const floorGeo = new THREE.PlaneGeometry(300, 300);
     textures.grass.wrapS = THREE.RepeatWrapping; textures.grass.wrapT = THREE.RepeatWrapping;
-    textures.grass.repeat.set(100, 100);
+    textures.grass.repeat.set(300, 300);
     const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({map: textures.grass}));
     floor.rotation.x = -Math.PI/2; floor.receiveShadow = true;
     scene.add(floor);
 
-    // Деревья
-    for(let i=0; i<25; i++) {
-        const x = Math.floor(Math.random()*80 - 40);
-        const z = Math.floor(Math.random()*80 - 40);
-        createTree(x, z);
-    }
-}
-
-function createClouds() {
-    const cloudGeo = new THREE.BoxGeometry(10, 4, 6);
+    // Облака
     const cloudMat = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.8});
-    for(let i=0; i<15; i++) {
-        const c = new THREE.Mesh(cloudGeo, cloudMat);
-        c.position.set(Math.random()*200-100, 40 + Math.random()*10, Math.random()*200-100);
+    for(let i=0; i<30; i++) {
+        const c = new THREE.Mesh(new THREE.BoxGeometry(16, 4, 10), cloudMat);
+        c.position.set(Math.random()*400-200, 40+Math.random()*20, Math.random()*400-200);
         scene.add(c);
+    }
+
+    // Горы, Дома, Деревья
+    const stoneMat = new THREE.MeshLambertMaterial({color: 0x757575});
+    const woodMat = new THREE.MeshLambertMaterial({map: textures.wood});
+    
+    for(let i=0; i<40; i++) {
+        const x = Math.random()*200-100; const z = Math.random()*200-100;
+        if(Math.abs(x)>10 || Math.abs(z)>10) createTree(x, z);
+
+        if(i < 10) {
+            const h = 10 + Math.random()*15;
+            const m = new THREE.Mesh(new THREE.BoxGeometry(20, h, 20), stoneMat);
+            m.position.set(Math.random()*240-120, h/2, Math.random()*240-120);
+            if(Math.abs(m.position.x) > 40) scene.add(m);
+        }
+
+        if(i < 5) {
+            const hx = Math.random()*160-80; const hz = Math.random()*160-80;
+            if(Math.abs(hx)>30) {
+                const house = new THREE.Group();
+                const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), woodMat); walls.position.y=2;
+                const roof = new THREE.Mesh(new THREE.ConeGeometry(5, 3, 4), new THREE.MeshLambertMaterial({color: 0x5a3a22}));
+                roof.position.y=5.5; roof.rotation.y=Math.PI/4;
+                house.add(walls, roof); house.position.set(hx, 0, hz);
+                scene.add(house);
+            }
+        }
+    }
+
+    // Трава, цветы, птицы
+    for(let i=0; i<200; i++) {
+        const g = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.2), new THREE.MeshBasicMaterial({color: 0x3E7635}));
+        g.position.set(Math.random()*180-90, 0, Math.random()*180-90);
+        scene.add(g);
+        if(i%10===0) {
+            const f = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), new THREE.MeshBasicMaterial({color: Math.random()>0.5?0xFF0000:0xFFFF00}));
+            f.position.copy(g.position); f.position.y=0.2; scene.add(f);
+        }
+    }
+
+    for(let i=0; i<10; i++) {
+        const bird = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.2), new THREE.MeshBasicMaterial({color: 0x000}));
+        bird.position.set(Math.random()*100-50, 30+Math.random()*10, Math.random()*100-50);
+        birds.push({m: bird, spd: 0.1 + Math.random()*0.1, off: Math.random()*10});
+        scene.add(bird);
     }
 }
 
@@ -249,74 +288,56 @@ function createTree(x, z) {
     const group = new THREE.Group();
     const trunk = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 1), new THREE.MeshLambertMaterial({map: textures.wood}));
     trunk.position.y = 2.5; trunk.castShadow = true;
-    
     const leafGeo = new THREE.BoxGeometry(1, 1, 1);
     const leafMat = new THREE.MeshLambertMaterial({map: textures.leaves, transparent: true});
-    
-    for(let lx=-2; lx<=2; lx++) {
-        for(let ly=0; ly<=2; ly++) {
-            for(let lz=-2; lz<=2; lz++) {
-                if(Math.abs(lx)+Math.abs(ly)+Math.abs(lz) < 4) {
-                    const l = new THREE.Mesh(leafGeo, leafMat);
-                    l.position.set(lx, 4+ly, lz);
-                    group.add(l);
-                }
-            }
-        }
-    }
-    group.add(trunk);
-    group.position.set(x, 0, z);
-    scene.add(group);
+    for(let lx=-2; lx<=2; lx++) for(let ly=0; ly<=2; ly++) for(let lz=-2; lz<=2; lz++) 
+        if(Math.abs(lx)+Math.abs(ly)+Math.abs(lz) < 4) { const l = new THREE.Mesh(leafGeo, leafMat); l.position.set(lx, 4+ly, lz); group.add(l); }
+    group.add(trunk); group.position.set(x, 0, z); scene.add(group);
 }
 
 function createWeapon() {
     gun = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0x333}));
     gun.add(body);
-    flash = new THREE.PointLight(0xffaa00, 0, 4);
-    flash.position.z = -1; gun.add(flash);
+    flash = new THREE.PointLight(0xffaa00, 0, 4); flash.position.z = -1; gun.add(flash);
     scene.add(gun);
 }
 
-// --- ТВОЯ ФУНКЦИЯ ДЛЯ МОБОВ ---
 function createMob(text) {
     const mob = new THREE.Group();
-    const skinMat = new THREE.MeshLambertMaterial({color: 0x3ab049});
-    const clothesMat = new THREE.MeshLambertMaterial({color: 0x3a5ab0});
+    const matSkin = new THREE.MeshLambertMaterial({color: 0x5D995D});
+    const matClothes = new THREE.MeshLambertMaterial({color: 0x3C50C4});
+    const matFace = new THREE.MeshLambertMaterial({map: textures.face});
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.25), matClothes);
+    body.position.y = 1.125;
     
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), clothesMat);
-    body.position.y = 1.125; // Поднял чуть выше, чтобы не проваливались
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), matFace);
+    head.position.y = 1.75;
     
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), skinMat);
-    head.position.y = 2.075; // 1.125 + 0.6 + 0.35
-    
-    // Руки
-    const armG = new THREE.BoxGeometry(0.3, 1, 0.3);
-    const armL = new THREE.Mesh(armG, skinMat); armL.position.set(-0.6, 1.6, 0);
-    const armR = new THREE.Mesh(armG, skinMat); armR.position.set(0.6, 1.6, 0);
-    
-    // Ноги
-    const legG = new THREE.BoxGeometry(0.35, 1, 0.4);
-    const legL = new THREE.Mesh(legG, clothesMat); legL.position.set(-0.2, 0.5, 0);
-    const legR = new THREE.Mesh(legG, clothesMat); legR.position.set(0.2, 0.5, 0);
+    const armGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2);
+    armGeo.translate(0, -0.3, 0);
+    const armL = new THREE.Mesh(armGeo, matSkin); armL.position.set(-0.35, 1.5, 0);
+    const armR = new THREE.Mesh(armGeo, matSkin); armR.position.set(0.35, 1.5, 0);
+
+    const legGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2);
+    legGeo.translate(0, -0.375, 0);
+    const legL = new THREE.Mesh(legGeo, matClothes); legL.position.set(-0.15, 0.75, 0);
+    const legR = new THREE.Mesh(legGeo, matClothes); legR.position.set(0.15, 0.75, 0);
     
     mob.add(body, head, armL, armR, legL, legR);
     mob.castShadow = true;
 
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 512; canvas.height = 128;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, 512, 128);
-    ctx.fillStyle = '#00ff00'; ctx.font = 'bold 80px Courier New'; ctx.textAlign = 'center';
-    ctx.fillText(text, 256, 90);
-    
+    const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+    canvas.width = 256; canvas.height = 64;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64);
+    ctx.font = 'bold 30px monospace'; ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
+    ctx.fillText(text, 128, 32);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
-    sprite.scale.set(3, 0.75, 1); sprite.position.y = 2.8;
+    sprite.scale.set(2, 0.5, 1); sprite.position.y = 2.4;
     mob.add(sprite);
 
-    // Добавляю данные для анимации и логики, чтобы игра не ломалась
-    mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false };
-
+    mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false, speed: 0 };
     return mob;
 }
 
@@ -325,22 +346,20 @@ function spawnBonuses() {
     const boxMat = new THREE.MeshLambertMaterial({map: textures.gold});
     for(let i=0; i<5; i++) {
         const b = new THREE.Mesh(boxGeo, boxMat);
-        b.position.set(Math.random()*60-30, 0.4, Math.random()*60-30);
-        b.rotation.y = Math.random();
-        scene.add(b);
-        bonuses.push(b);
+        b.position.set(Math.random()*100-50, 0.4, Math.random()*100-50);
+        scene.add(b); bonuses.push(b);
     }
 }
 
 function loadQuestion() {
-    targets.forEach(t => scene.remove(t.obj));
-    targets = [];
+    targets.forEach(t => scene.remove(t.obj)); targets = [];
     const qData = config.questions[currentQ];
     document.getElementById('q-text').innerText = qData.q;
-
     qData.a.forEach((ans, i) => {
         const mob = createMob(ans);
-        mob.position.set(Math.random()*30-15, 0, Math.random()*30-15);
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 10 + Math.random() * 10;
+        mob.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
         scene.add(mob);
         targets.push({ obj: mob, isCorrect: i === qData.c, angle: Math.random()*10 });
     });
@@ -350,38 +369,22 @@ function shoot() {
     if(isDead) return;
     if(audioCtx.state === 'suspended') audioCtx.resume();
     
-    // Звук выстрела
     const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
     osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime+0.1);
-    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.1);
-    osc.connect(g); g.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime+0.1);
+    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.1); osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.1);
 
-    gun.position.z += 0.2;
-    flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50);
+    gun.position.z += 0.2; flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50);
 
-    const ray = new THREE.Raycaster();
-    ray.setFromCamera(new THREE.Vector2(0,0), camera);
+    const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
     const hits = ray.intersectObjects(scene.children, true);
 
     if(hits.length > 0) {
         let hit = hits[0].object;
-        
-        // Проверка бонуса
         if(bonuses.includes(hit)) {
-            scene.remove(hit);
-            bonuses = bonuses.filter(b => b !== hit);
-            if(lootCount < 5) {
-                document.getElementById('slot-'+lootCount).innerText = "$";
-                lootCount++;
-            }
-            // Звук лута
-            const oL = audioCtx.createOscillator(); oL.type = 'triangle';
-            oL.frequency.setValueAtTime(1200, audioCtx.currentTime); 
-            oL.connect(audioCtx.destination); oL.start(); oL.stop(audioCtx.currentTime+0.1);
-            spawnParticles(hit.position, 0xffff00);
-            return;
+            scene.remove(hit); bonuses = bonuses.filter(b => b !== hit);
+            if(lootCount < 5) { document.getElementById('slot-'+lootCount).innerText = "$"; lootCount++; }
+            spawnParticles(hit.position, 0xffff00); return;
         }
 
         while(hit.parent && hit.type !== 'Group') hit = hit.parent;
@@ -389,22 +392,15 @@ function shoot() {
         
         if(target) {
             if(target.isCorrect) {
-                // Правильный ответ
-                score += 100 + (combo * 50);
-                combo++;
+                score += 100 + (combo * 50); combo++;
                 document.getElementById('lvl-num').innerText = Math.floor(score/500);
                 document.getElementById('combo-num').innerText = combo;
                 document.getElementById('xp-fill').style.width = (score%500)/5 + '%';
-                
                 spawnParticles(hit.position, 0x00ff00);
-                currentQ = (currentQ + 1) % config.questions.length;
-                loadQuestion();
+                currentQ = (currentQ + 1) % config.questions.length; loadQuestion();
             } else {
-                // Ошибка
-                combo = 0;
-                document.getElementById('combo-num').innerText = combo;
+                combo = 0; document.getElementById('combo-num').innerText = combo;
                 target.obj.userData.isAggro = true;
-                // Красим части в красный
                 target.obj.userData.parts.body.material.color.set(0xff0000);
             }
         }
@@ -416,39 +412,29 @@ function takeDamage() {
     health--;
     const hearts = document.querySelectorAll('.heart');
     if(hearts[health]) hearts[health].classList.add('lost');
-    
     const overlay = document.getElementById('damage-overlay');
     overlay.style.opacity = 0.5; setTimeout(()=>overlay.style.opacity=0, 150);
-
-    if(health <= 0) {
-        isDead = true;
-        document.getElementById('game-over').style.display = 'flex';
-        document.exitPointerLock();
-    }
+    camera.translateZ(2);
+    if(health <= 0) { isDead = true; document.getElementById('game-over').style.display = 'flex'; document.exitPointerLock(); }
 }
 
 function spawnParticles(pos, color) {
     for(let i=0; i<8; i++) {
         const p = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,0.2), new THREE.MeshBasicMaterial({color: color}));
-        p.position.copy(pos);
-        scene.add(p);
+        p.position.copy(pos); scene.add(p);
         particles.push({m:p, v: new THREE.Vector3((Math.random()-.5)*0.5, Math.random()*0.5, (Math.random()-.5)*0.5)});
     }
 }
 
 function handleKeys(code, state) {
-    if(code === 'KeyW') move.fwd = state;
-    if(code === 'KeyS') move.bwd = state;
-    if(code === 'KeyA') move.left = state;
-    if(code === 'KeyD') move.right = state;
+    if(code === 'KeyW') move.fwd = state; if(code === 'KeyS') move.bwd = state;
+    if(code === 'KeyA') move.left = state; if(code === 'KeyD') move.right = state;
 }
 
 function onMouseMove(e) {
     if(document.pointerLockElement && !isDead) {
-        yaw -= e.movementX * 0.002;
-        pitch -= e.movementY * 0.002;
-        pitch = Math.max(-1.5, Math.min(1.5, pitch));
-        camera.rotation.set(pitch, yaw, 0);
+        yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
+        pitch = Math.max(-1.5, Math.min(1.5, pitch)); camera.rotation.set(pitch, yaw, 0);
     }
 }
 
@@ -458,43 +444,54 @@ function animate() {
     const delta = clock.getDelta();
     const now = Date.now() / 1000;
 
-    // Движение
     if(move.fwd) vel.z = -10 * delta; else if(move.bwd) vel.z = 10 * delta; else vel.z = 0;
     if(move.left) vel.x = -10 * delta; else if(move.right) vel.x = 10 * delta; else vel.x = 0;
     camera.translateX(vel.x); camera.translateZ(vel.z); camera.position.y = 1.7;
+    
+    camera.position.x = Math.max(-95, Math.min(95, camera.position.x));
+    camera.position.z = Math.max(-95, Math.min(95, camera.position.z));
 
-    // ЗВУК ШАГОВ (играет только если двигаемся)
-    if (footstepSound && footstepSound.buffer) {
-        const isMoving = (vel.x !== 0 || vel.z !== 0);
-        if (isMoving && !footstepSound.isPlaying) footstepSound.play();
-        else if (!isMoving && footstepSound.isPlaying) footstepSound.stop();
+    // СИНТЕЗАТОР ШАГОВ
+    const isMoving = (vel.x !== 0 || vel.z !== 0);
+    if (isMoving && now - stepTimer > 0.4) {
+        playStepSound();
+        stepTimer = now;
     }
 
-    // Оружие
     gun.position.copy(camera.position); gun.quaternion.copy(camera.quaternion);
-    const isMoving = (vel.x!==0 || vel.z!==0);
     gun.translateX(0.4); gun.translateY(-0.4 + (isMoving ? Math.sin(now*12)*0.03 : 0)); gun.translateZ(-0.6);
 
-    // Мобы
     targets.forEach(t => {
         const mob = t.obj;
         const parts = mob.userData.parts;
+        const dist = mob.position.distanceTo(camera.position);
+
+        if (dist > 40 && !mob.userData.isAggro) mob.lookAt(0, 0, 0);
+
         if(mob.userData.isAggro) {
             mob.lookAt(camera.position.x, 0, camera.position.z);
-            mob.translateZ(3 * delta);
-            if(mob.position.distanceTo(camera.position) < 1.0) { takeDamage(); mob.translateZ(-2); }
+            mob.translateZ(4 * delta);
+            if(dist < 1.5) { takeDamage(); mob.translateZ(-3); }
         } else {
-            mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.02; mob.translateZ(1 * delta);
+            mob.translateZ(1.5 * delta);
+            mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.01;
         }
-        const w = Math.sin(now * 10);
-        parts.armL.rotation.x = -w; parts.armR.rotation.x = w;
-        parts.legL.rotation.x = w; parts.legR.rotation.x = -w;
+
+        const speed = mob.userData.isAggro ? 15 : 8;
+        const w = Math.sin(now * speed);
+        parts.armL.rotation.x = w; parts.armR.rotation.x = -w;
+        parts.legL.rotation.x = -w; parts.legR.rotation.x = w;
     });
 
-    // Бонусы (Вращение)
     bonuses.forEach(b => b.rotation.y += 0.02);
 
-    // Частицы
+    birds.forEach(b => {
+        b.m.position.x += Math.cos(now + b.off) * b.spd;
+        b.m.position.z += Math.sin(now + b.off) * b.spd;
+        b.m.rotation.y = -now - b.off;
+        b.m.position.y += Math.sin(now * 5) * 0.02;
+    });
+
     for(let i=particles.length-1; i>=0; i--) {
         const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; p.m.rotation.x += 0.1;
         if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); }
