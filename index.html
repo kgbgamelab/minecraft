@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft: True Survival Final</title>
+    <title>Minecraft: True Survival v2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
         
-        /* ИНТЕРФЕЙС */
         #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
@@ -38,9 +37,10 @@
         #hotbar { display: flex; justify-content: center; gap: 4px; background: rgba(0,0,0,0.5); padding: 5px; border: 2px solid #555; }
         .slot {
             width: 50px; height: 50px; background: #8b8b8b; border: 3px solid #373737; border-top-color: #fff; border-left-color: #fff;
-            display: flex; align-items: center; justify-content: center; font-size: 24px; color: gold;
+            display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; position: relative;
         }
-        .slot.active { border-color: white; }
+        .slot.active { border-color: white; background: #a0a0a0; }
+        .slot img { width: 40px; height: 40px; image-rendering: pixelated; }
 
         #quest-box {
             position: absolute; top: 5%; left: 50%; transform: translateX(-50%);
@@ -65,7 +65,7 @@
     <div id="crosshair"></div>
     <div id="bottom-ui">
         <div id="xp-info">
-            <span>LVL: <span id="lvl-num">0</span></span>
+            <span>XP: <span id="lvl-num">0</span></span>
             <span style="color: yellow">COMBO: x<span id="combo-num">0</span></span>
         </div>
         <div class="hearts" id="hearts-container">
@@ -74,7 +74,7 @@
         </div>
         <div id="xp-bar"><div id="xp-fill"></div></div>
         <div id="hotbar">
-            <div class="slot active" id="slot-0"></div>
+            <div class="slot active" id="slot-0">🔫</div>
             <div class="slot" id="slot-1"></div>
             <div class="slot" id="slot-2"></div>
             <div class="slot" id="slot-3"></div>
@@ -89,49 +89,48 @@
 </div>
 
 <script>
-let scene, camera, renderer, gun, flash;
-let score = 0, currentQ = 0, health = 10, combo = 0, lootCount = 0;
-let targets = [], particles = [], bonuses = [], birds = [];
+let scene, camera, renderer, weaponGroup, flash;
+let score = 0, currentQ = 0, health = 10, combo = 0;
+let targets = [], particles = [], bonuses = [], birds = [], items = [];
 let move = { fwd: false, bwd: false, left: false, right: false };
 let vel = new THREE.Vector3();
 let pitch = 0, yaw = 0;
 let isDead = false;
-let stepTimer = 0; // Таймер для шагов
+let lastDamageTime = 0;
+let stepTimer = 0;
+
+let currentWeaponType = 'gun'; // gun, sword, pickaxe
+let inventory = ['gun']; // Стартовое оружие
+
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- СИНТЕЗАТОР ШАГОВ (Генератор шума) ---
-function playStepSound() {
+// --- СИНТЕЗАТОР ЗВУКОВ ---
+function playSound(type) {
     if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
     
-    // Создаем буфер шума (0.1 секунды)
-    const bufferSize = audioCtx.sampleRate * 0.1;
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    
-    // Заполняем белым шумом
-    for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * 0.5;
+    if(type === 'step') { // Шаги
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*0.1, audioCtx.sampleRate);
+        const d = buf.getChannelData(0);
+        for(let i=0; i<d.length; i++) d[i] = (Math.random()*2-1)*0.5;
+        const src = audioCtx.createBufferSource(); src.buffer = buf;
+        const f = audioCtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=400;
+        g.gain.setValueAtTime(0.3, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.1);
+        src.connect(f); f.connect(g); g.connect(audioCtx.destination); src.start();
+    } 
+    else if (type === 'hit') { // Урон
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime+0.2);
+        g.gain.setValueAtTime(0.5, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.2);
+        osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.2);
     }
-
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = buffer;
-
-    // Фильтр, чтобы звук был глухим (как по траве)
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 400; // Низкая частота
-
-    // Громкость с затуханием
-    const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioCtx.destination);
-    
-    noise.start();
+    else if (type === 'loot') { // Подбор
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(1500, audioCtx.currentTime+0.1);
+        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.2);
+        osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.2);
+    }
 }
 
 // --- ТЕКСТУРЫ ---
@@ -142,10 +141,7 @@ function createTexture(type) {
     
     const fillNoise = (c, v) => {
         ctx.fillStyle = c; ctx.fillRect(0,0,64,64);
-        for(let i=0; i<400; i++) {
-            ctx.fillStyle = `rgba(0,0,0,${Math.random()*v})`;
-            ctx.fillRect(Math.random()*64, Math.random()*64, 4, 4);
-        }
+        for(let i=0; i<400; i++) ctx.fillStyle=`rgba(0,0,0,${Math.random()*v})`, ctx.fillRect(Math.random()*64,Math.random()*64,4,4);
     };
 
     if(type === 'grass_top') { fillNoise('#5da34b', 0.1); ctx.fillStyle='#4a8f3a'; for(let i=0;i<50;i++) ctx.fillRect(Math.random()*60,Math.random()*60,4,4); }
@@ -153,11 +149,15 @@ function createTexture(type) {
     else if (type === 'side') { fillNoise('#6d4e34', 0.2); ctx.fillStyle='#5da34b'; ctx.fillRect(0,0,64,15); for(let i=0;i<16;i++) ctx.fillRect(i*4,15,4,Math.random()*6); }
     else if (type === 'wood') { ctx.fillStyle='#5c4033'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#4a332a'; for(let i=1;i<4;i++) ctx.fillRect(i*16,0,4,64); }
     else if (type === 'leaves') { fillNoise('#2d5a27', 0.1); ctx.fillStyle='#1e3c1a'; for(let i=0;i<30;i++) ctx.fillRect(Math.random()*60,Math.random()*60,6,6); }
-    else if (type === 'gold') { ctx.fillStyle='#FFD700'; ctx.fillRect(0,0,64,64); ctx.strokeStyle='#DAA520'; ctx.lineWidth=4; ctx.strokeRect(2,2,60,60); ctx.fillStyle='#FFF'; ctx.fillRect(10,10,10,10); }
+    else if (type === 'chest') { // Сундук
+        ctx.fillStyle='#7B5529'; ctx.fillRect(0,0,64,64); // Дерево
+        ctx.fillStyle='#000'; ctx.fillRect(0,0,64,2); ctx.fillRect(0,62,64,2); ctx.fillRect(0,0,2,64); ctx.fillRect(62,0,2,64); // Окантовка
+        ctx.fillStyle='#FFD700'; ctx.fillRect(26,20,12,18); // Замок
+    }
     else if (type === 'face') {
         fillNoise('#bcaea5', 0.05);
-        ctx.fillStyle='#333'; ctx.fillRect(8, 20, 16, 8); ctx.fillRect(40, 20, 16, 8);
-        ctx.fillStyle='#533'; ctx.fillRect(20, 40, 24, 6);
+        ctx.fillStyle='#222'; ctx.fillRect(10, 24, 12, 12); ctx.fillRect(42, 24, 12, 12); // Глаза
+        ctx.fillStyle='#633'; ctx.fillRect(20, 48, 24, 8); // Рот
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -168,7 +168,7 @@ function createTexture(type) {
 const textures = {
     grass: createTexture('grass_top'), dirt: createTexture('dirt'),
     side: createTexture('side'), wood: createTexture('wood'),
-    leaves: createTexture('leaves'), gold: createTexture('gold'),
+    leaves: createTexture('leaves'), chest: createTexture('chest'),
     face: createTexture('face')
 };
 
@@ -184,10 +184,14 @@ const config = {
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.Fog(0x87CEEB, 20, 120);
+    scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
 
     camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
     camera.rotation.order = 'YXZ';
+    
+    // Рука с оружием
+    weaponGroup = new THREE.Group();
+    scene.add(weaponGroup); // Добавляем в сцену, но будем двигать за камерой
 
     renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -203,18 +207,22 @@ function init() {
     sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
     scene.add(sun);
 
-    // Визуальное Солнце
     const sunG = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 1), new THREE.MeshBasicMaterial({color: 0xffffee}));
     sunG.position.set(40, 80, -60); scene.add(sunG);
 
     createWorld();
-    createWeapon();
-    spawnBonuses();
+    setWeapon('gun'); // Старт с пушкой
+    spawnLoot();
     loadQuestion();
     
-    document.addEventListener('keydown', e => handleKeys(e.code, true));
+    document.addEventListener('keydown', e => {
+        if(e.key === '1') setWeapon('gun');
+        if(e.key === '2' && inventory.includes('sword')) setWeapon('sword');
+        if(e.key === '3' && inventory.includes('pickaxe')) setWeapon('pickaxe');
+        handleKeys(e.code, true);
+    });
     document.addEventListener('keyup', e => handleKeys(e.code, false));
-    document.addEventListener('mousedown', shoot);
+    document.addEventListener('mousedown', attack);
     document.addEventListener('mousemove', onMouseMove);
     window.addEventListener('resize', () => { camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
@@ -237,7 +245,7 @@ function createWorld() {
         scene.add(c);
     }
 
-    // Горы, Дома, Деревья
+    // Декор
     const stoneMat = new THREE.MeshLambertMaterial({color: 0x757575});
     const woodMat = new THREE.MeshLambertMaterial({map: textures.wood});
     
@@ -245,14 +253,14 @@ function createWorld() {
         const x = Math.random()*200-100; const z = Math.random()*200-100;
         if(Math.abs(x)>10 || Math.abs(z)>10) createTree(x, z);
 
-        if(i < 10) {
+        if(i < 8) { // Горы
             const h = 10 + Math.random()*15;
             const m = new THREE.Mesh(new THREE.BoxGeometry(20, h, 20), stoneMat);
             m.position.set(Math.random()*240-120, h/2, Math.random()*240-120);
             if(Math.abs(m.position.x) > 40) scene.add(m);
         }
 
-        if(i < 5) {
+        if(i < 5) { // Дома
             const hx = Math.random()*160-80; const hz = Math.random()*160-80;
             if(Math.abs(hx)>30) {
                 const house = new THREE.Group();
@@ -263,24 +271,6 @@ function createWorld() {
                 scene.add(house);
             }
         }
-    }
-
-    // Трава, цветы, птицы
-    for(let i=0; i<200; i++) {
-        const g = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.2), new THREE.MeshBasicMaterial({color: 0x3E7635}));
-        g.position.set(Math.random()*180-90, 0, Math.random()*180-90);
-        scene.add(g);
-        if(i%10===0) {
-            const f = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), new THREE.MeshBasicMaterial({color: Math.random()>0.5?0xFF0000:0xFFFF00}));
-            f.position.copy(g.position); f.position.y=0.2; scene.add(f);
-        }
-    }
-
-    for(let i=0; i<10; i++) {
-        const bird = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.2), new THREE.MeshBasicMaterial({color: 0x000}));
-        bird.position.set(Math.random()*100-50, 30+Math.random()*10, Math.random()*100-50);
-        birds.push({m: bird, spd: 0.1 + Math.random()*0.1, off: Math.random()*10});
-        scene.add(bird);
     }
 }
 
@@ -295,39 +285,107 @@ function createTree(x, z) {
     group.add(trunk); group.position.set(x, 0, z); scene.add(group);
 }
 
-function createWeapon() {
-    gun = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0x333}));
-    gun.add(body);
-    flash = new THREE.PointLight(0xffaa00, 0, 4); flash.position.z = -1; gun.add(flash);
-    scene.add(gun);
+// --- СИСТЕМА ОРУЖИЯ ---
+function setWeapon(type) {
+    currentWeaponType = type;
+    weaponGroup.clear(); // Удаляем старое
+    
+    // Обновляем слоты
+    document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
+    if(type==='gun') document.getElementById('slot-0').classList.add('active');
+    if(type==='sword') document.getElementById('slot-1').classList.add('active');
+    if(type==='pickaxe') document.getElementById('slot-2').classList.add('active');
+
+    if (type === 'gun') {
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0x333}));
+        flash = new THREE.PointLight(0xffaa00, 0, 4); flash.position.z = -1; 
+        weaponGroup.add(body, flash);
+        weaponGroup.userData = { originRot: new THREE.Euler(0,0,0) };
+    } else if (type === 'sword') {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.05), new THREE.MeshLambertMaterial({color: 0x88ccff})); // Алмазный
+        blade.position.y = 0.5;
+        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.1), new THREE.MeshLambertMaterial({color: 0x333}));
+        guard.position.y = 0.1;
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
+        handle.position.y = -0.1;
+        weaponGroup.add(blade, guard, handle);
+        weaponGroup.rotation.x = Math.PI / 4; // Наклон вперед
+        weaponGroup.userData = { originRot: new THREE.Euler(Math.PI/4, 0, 0) };
+    } else if (type === 'pickaxe') {
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.1), new THREE.MeshLambertMaterial({color: 0xaaaaaa})); // Железная
+        head.position.y = 0.5; 
+        // Изогнем кирку чуть-чуть
+        head.geometry.translate(0, -0.05, 0);
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
+        handle.position.y = 0.2;
+        weaponGroup.add(head, handle);
+        weaponGroup.rotation.x = Math.PI / 4;
+        weaponGroup.userData = { originRot: new THREE.Euler(Math.PI/4, 0, 0) };
+    }
+}
+
+function spawnLoot() {
+    // Сундуки
+    const chestGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    const chestMat = new THREE.MeshLambertMaterial({map: textures.chest});
+    for(let i=0; i<5; i++) {
+        const b = new THREE.Mesh(chestGeo, chestMat);
+        b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40);
+        b.userData = { type: 'chest' };
+        scene.add(b); bonuses.push(b);
+    }
+    // Меч (лежит на земле)
+    const sword = new THREE.Group();
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.05), new THREE.MeshLambertMaterial({color: 0x88ccff}));
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
+    blade.position.y=0.4; handle.position.y=-0.15; sword.add(blade, handle);
+    sword.position.set(5, 0.5, 5); sword.rotation.z = Math.PI/2;
+    sword.userData = { type: 'sword_item' };
+    scene.add(sword); items.push(sword);
+
+    // Кирка
+    const pick = new THREE.Group();
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.1), new THREE.MeshLambertMaterial({color: 0xaaaaaa}));
+    const stick = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
+    head.position.y=0.3; stick.position.y=0; pick.add(head, stick);
+    pick.position.set(-5, 0.5, 5); pick.rotation.z = Math.PI/2;
+    pick.userData = { type: 'pick_item' };
+    scene.add(pick); items.push(pick);
 }
 
 function createMob(text) {
     const mob = new THREE.Group();
     const matSkin = new THREE.MeshLambertMaterial({color: 0x5D995D});
     const matClothes = new THREE.MeshLambertMaterial({color: 0x3C50C4});
-    const matFace = new THREE.MeshLambertMaterial({map: textures.face});
+    
+    // МАТЕРИАЛЫ ДЛЯ ГОЛОВЫ (Лицо только спереди)
+    // Порядок в Three.js BoxGeometry: Right, Left, Top, Bottom, Front, Back
+    const headMaterials = [
+        matSkin, matSkin, matSkin, matSkin, 
+        new THREE.MeshLambertMaterial({map: textures.face}), // FRONT
+        matSkin
+    ];
 
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.25), matClothes);
     body.position.y = 1.125;
     
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), matFace);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), headMaterials);
     head.position.y = 1.75;
     
-    const armGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2);
-    armGeo.translate(0, -0.3, 0);
+    // Руки (пивот в плече)
+    const armGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2); armGeo.translate(0, -0.3, 0);
     const armL = new THREE.Mesh(armGeo, matSkin); armL.position.set(-0.35, 1.5, 0);
     const armR = new THREE.Mesh(armGeo, matSkin); armR.position.set(0.35, 1.5, 0);
 
-    const legGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2);
-    legGeo.translate(0, -0.375, 0);
+    // Ноги (пивот в бедре)
+    const legGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2); legGeo.translate(0, -0.375, 0);
     const legL = new THREE.Mesh(legGeo, matClothes); legL.position.set(-0.15, 0.75, 0);
     const legR = new THREE.Mesh(legGeo, matClothes); legR.position.set(0.15, 0.75, 0);
     
     mob.add(body, head, armL, armR, legL, legR);
     mob.castShadow = true;
 
+    // Имя
     const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
     canvas.width = 256; canvas.height = 64;
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64);
@@ -337,18 +395,8 @@ function createMob(text) {
     sprite.scale.set(2, 0.5, 1); sprite.position.y = 2.4;
     mob.add(sprite);
 
-    mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false, speed: 0 };
+    mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false };
     return mob;
-}
-
-function spawnBonuses() {
-    const boxGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-    const boxMat = new THREE.MeshLambertMaterial({map: textures.gold});
-    for(let i=0; i<5; i++) {
-        const b = new THREE.Mesh(boxGeo, boxMat);
-        b.position.set(Math.random()*100-50, 0.4, Math.random()*100-50);
-        scene.add(b); bonuses.push(b);
-    }
 }
 
 function loadQuestion() {
@@ -358,42 +406,70 @@ function loadQuestion() {
     qData.a.forEach((ans, i) => {
         const mob = createMob(ans);
         const angle = Math.random() * Math.PI * 2;
-        const radius = 10 + Math.random() * 10;
+        const radius = 15 + Math.random() * 5;
         mob.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
         scene.add(mob);
         targets.push({ obj: mob, isCorrect: i === qData.c, angle: Math.random()*10 });
     });
 }
 
-function shoot() {
+function attack() {
     if(isDead) return;
     if(audioCtx.state === 'suspended') audioCtx.resume();
     
-    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-    osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime+0.1);
-    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.1); osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.1);
-
-    gun.position.z += 0.2; flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50);
+    // Анимация оружия
+    if(currentWeaponType === 'gun') {
+        weaponGroup.position.z += 0.2; 
+        if(flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); }
+    } else {
+        // Удар мечом/киркой (Вращение)
+        weaponGroup.rotation.x = 0; // Вниз
+        setTimeout(() => weaponGroup.rotation.x = Math.PI/4, 150); // Обратно
+    }
 
     const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
     const hits = ray.intersectObjects(scene.children, true);
 
     if(hits.length > 0) {
         let hit = hits[0].object;
-        if(bonuses.includes(hit)) {
-            scene.remove(hit); bonuses = bonuses.filter(b => b !== hit);
-            if(lootCount < 5) { document.getElementById('slot-'+lootCount).innerText = "$"; lootCount++; }
-            spawnParticles(hit.position, 0xffff00); return;
+
+        // СБОР ПРЕДМЕТОВ (Сундуки, Мечи, Кирки)
+        let root = hit;
+        while(root.parent && root.parent.type !== 'Scene') root = root.parent;
+
+        if(bonuses.includes(root)) {
+            playSound('loot');
+            scene.remove(root); bonuses = bonuses.filter(b => b !== root);
+            score += 200; // Очки за сундук
+            document.getElementById('lvl-num').innerText = score;
+            spawnParticles(root.position, 0xffff00); return;
+        }
+        if(items.includes(root)) {
+            playSound('loot');
+            scene.remove(root); items = items.filter(i => i !== root);
+            if(root.userData.type === 'sword_item') {
+                inventory.push('sword'); 
+                document.getElementById('slot-1').innerText = "🗡️";
+            }
+            if(root.userData.type === 'pick_item') {
+                inventory.push('pickaxe'); 
+                document.getElementById('slot-2').innerText = "⛏️";
+            }
+            return;
         }
 
+        // Логика Моб
         while(hit.parent && hit.type !== 'Group') hit = hit.parent;
         const target = targets.find(t => t.obj === hit);
         
         if(target) {
+            // Дистанция удара (для меча меньше, для пушки больше)
+            const dist = hit.position.distanceTo(camera.position);
+            if(currentWeaponType !== 'gun' && dist > 4) return; // Мечом далеко не достать
+
             if(target.isCorrect) {
                 score += 100 + (combo * 50); combo++;
-                document.getElementById('lvl-num').innerText = Math.floor(score/500);
+                document.getElementById('lvl-num').innerText = score;
                 document.getElementById('combo-num').innerText = combo;
                 document.getElementById('xp-fill').style.width = (score%500)/5 + '%';
                 spawnParticles(hit.position, 0x00ff00);
@@ -409,12 +485,24 @@ function shoot() {
 
 function takeDamage() {
     if(isDead) return;
+    const now = Date.now();
+    if (now - lastDamageTime < 1000) return; // Кулдаун 1 секунда
+    lastDamageTime = now;
+
+    playSound('hit');
     health--;
     const hearts = document.querySelectorAll('.heart');
     if(hearts[health]) hearts[health].classList.add('lost');
+    
+    // Эффект удара
     const overlay = document.getElementById('damage-overlay');
-    overlay.style.opacity = 0.5; setTimeout(()=>overlay.style.opacity=0, 150);
-    camera.translateZ(2);
+    overlay.style.opacity = 0.6; setTimeout(()=>overlay.style.opacity=0, 300);
+    
+    // Отталкивание назад
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    camera.position.add(dir.multiplyScalar(-3));
+
     if(health <= 0) { isDead = true; document.getElementById('game-over').style.display = 'flex'; document.exitPointerLock(); }
 }
 
@@ -444,54 +532,62 @@ function animate() {
     const delta = clock.getDelta();
     const now = Date.now() / 1000;
 
+    // Движение
     if(move.fwd) vel.z = -10 * delta; else if(move.bwd) vel.z = 10 * delta; else vel.z = 0;
     if(move.left) vel.x = -10 * delta; else if(move.right) vel.x = 10 * delta; else vel.x = 0;
     camera.translateX(vel.x); camera.translateZ(vel.z); camera.position.y = 1.7;
     
-    camera.position.x = Math.max(-95, Math.min(95, camera.position.x));
-    camera.position.z = Math.max(-95, Math.min(95, camera.position.z));
+    // ШАГИ
+    if ((vel.x !== 0 || vel.z !== 0) && now - stepTimer > 0.4) { playSound('step'); stepTimer = now; }
 
-    // СИНТЕЗАТОР ШАГОВ
-    const isMoving = (vel.x !== 0 || vel.z !== 0);
-    if (isMoving && now - stepTimer > 0.4) {
-        playStepSound();
-        stepTimer = now;
+    // Оружие следит за камерой
+    const offset = currentWeaponType === 'gun' ? new THREE.Vector3(0.4, -0.4, -0.6) : new THREE.Vector3(0.5, -0.5, -0.8);
+    const bob = (vel.x!==0 || vel.z!==0) ? Math.sin(now*12)*0.03 : 0;
+    
+    weaponGroup.position.copy(camera.position);
+    weaponGroup.quaternion.copy(camera.quaternion);
+    weaponGroup.translateX(offset.x);
+    weaponGroup.translateY(offset.y + bob);
+    weaponGroup.translateZ(offset.z);
+    
+    // Возврат анимации (отдача/удар)
+    if(weaponGroup.userData.originRot) {
+        weaponGroup.rotation.x = THREE.MathUtils.lerp(weaponGroup.rotation.x, weaponGroup.userData.originRot.x, 0.1);
+    } else {
+        weaponGroup.position.z = THREE.MathUtils.lerp(weaponGroup.position.z, camera.position.z + ((new THREE.Vector3(0,0,-0.6)).applyQuaternion(camera.quaternion)).z, 0.1);
     }
 
-    gun.position.copy(camera.position); gun.quaternion.copy(camera.quaternion);
-    gun.translateX(0.4); gun.translateY(-0.4 + (isMoving ? Math.sin(now*12)*0.03 : 0)); gun.translateZ(-0.6);
-
+    // Мобы
     targets.forEach(t => {
         const mob = t.obj;
-        const parts = mob.userData.parts;
         const dist = mob.position.distanceTo(camera.position);
-
-        if (dist > 40 && !mob.userData.isAggro) mob.lookAt(0, 0, 0);
 
         if(mob.userData.isAggro) {
             mob.lookAt(camera.position.x, 0, camera.position.z);
-            mob.translateZ(4 * delta);
-            if(dist < 1.5) { takeDamage(); mob.translateZ(-3); }
+            if(dist > 1.5) { // Не входить в игрока!
+                mob.translateZ(4 * delta);
+            } else {
+                takeDamage(); // Кусь!
+            }
         } else {
+            if(dist > 40) mob.lookAt(0,0,0);
             mob.translateZ(1.5 * delta);
             mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.01;
         }
 
+        // Анимация конечностей
         const speed = mob.userData.isAggro ? 15 : 8;
         const w = Math.sin(now * speed);
-        parts.armL.rotation.x = w; parts.armR.rotation.x = -w;
-        parts.legL.rotation.x = -w; parts.legR.rotation.x = w;
+        const p = mob.userData.parts;
+        p.armL.rotation.x = w; p.armR.rotation.x = -w;
+        p.legL.rotation.x = -w; p.legR.rotation.x = w;
     });
 
+    // Вращение лута
     bonuses.forEach(b => b.rotation.y += 0.02);
+    items.forEach(i => i.rotation.y += 0.02);
 
-    birds.forEach(b => {
-        b.m.position.x += Math.cos(now + b.off) * b.spd;
-        b.m.position.z += Math.sin(now + b.off) * b.spd;
-        b.m.rotation.y = -now - b.off;
-        b.m.position.y += Math.sin(now * 5) * 0.02;
-    });
-
+    // Частицы
     for(let i=particles.length-1; i>=0; i--) {
         const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; p.m.rotation.x += 0.1;
         if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); }
