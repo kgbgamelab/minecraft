@@ -3,89 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft: True Survival</title>
+    <title>Minecraft: True Survival + Loot</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
         
-        /* ИНТЕРФЕЙС MINECRAFT */
+        /* ИНТЕРФЕЙС */
         #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
         
-        /* Прицел */
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
-            transform: translate(-50%, -50%);
-            mix-blend-mode: difference;
+            transform: translate(-50%, -50%); mix-blend-mode: difference;
         }
         #crosshair::before, #crosshair::after { content: ''; position: absolute; background: white; }
         #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
         #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
 
-        /* Нижняя панель */
         #bottom-ui {
             position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 600px; height: 100px; text-align: center;
+            width: 600px; height: 120px; text-align: center;
         }
 
-        /* Сердечки и Еда */
-        #stats-row {
-            display: flex; justify-content: space-between; width: 100%; padding: 0 10px; box-sizing: border-box;
-            margin-bottom: 5px;
-        }
+        #stats-row { display: flex; justify-content: space-between; width: 100%; padding: 0 10px; box-sizing: border-box; margin-bottom: 5px; }
         .hearts { display: flex; gap: 4px; }
         .heart {
-            width: 20px; height: 20px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="red" d="M2,1 h2 v1 h2 v-1 h2 v2 h-1 v1 h-1 v1 h-1 v1 h-1 v1 h-2 v-1 h-1 v-1 h-1 v-1 h-1 v-2 h2 z" stroke="black" stroke-width="0.5"/></svg>');
+            width: 24px; height: 24px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="red" d="M2,1 h2 v1 h2 v-1 h2 v2 h-1 v1 h-1 v1 h-1 v1 h-1 v1 h-2 v-1 h-1 v-1 h-1 v-1 h-1 v-2 h2 z" stroke="black" stroke-width="0.5"/></svg>');
             background-size: cover; image-rendering: pixelated;
         }
         .heart.lost { filter: grayscale(100%) brightness(0.2); }
 
-        /* Полоска опыта */
-        #xp-bar {
-            width: 100%; height: 10px; background: #333; border: 2px solid #000;
-            position: relative; margin-bottom: 5px;
-        }
-        #xp-fill {
-            height: 100%; background: #00ff00; width: 0%; transition: width 0.2s;
-        }
-        #xp-level {
-            position: absolute; top: -35px; width: 100%; text-align: center;
-            color: #80ff00; font-size: 40px; text-shadow: 3px 3px 0 #000;
-        }
-
-        /* Инвентарь (Хотбар) */
-        #hotbar {
-            display: flex; justify-content: center; gap: 2px;
-            background: rgba(0,0,0,0.5); padding: 3px; border: 2px solid #555;
-        }
+        #xp-bar { width: 100%; height: 12px; background: #333; border: 2px solid #000; position: relative; margin-bottom: 10px; }
+        #xp-fill { height: 100%; background: #00ff00; width: 0%; transition: width 0.2s; }
+        #xp-info { position: absolute; top: -40px; width: 100%; display: flex; justify-content: center; gap: 20px; text-shadow: 2px 2px 0 #000; font-size: 30px; color: #80ff00; }
+        
+        #hotbar { display: flex; justify-content: center; gap: 4px; background: rgba(0,0,0,0.5); padding: 5px; border: 2px solid #555; }
         .slot {
-            width: 50px; height: 50px; background: #8b8b8b; border: 3px solid #373737;
-            border-top-color: #fff; border-left-color: #fff;
-            display: flex; align-items: center; justify-content: center;
+            width: 50px; height: 50px; background: #8b8b8b; border: 3px solid #373737; border-top-color: #fff; border-left-color: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 20px; color: gold;
         }
         .slot.active { border-color: white; }
-        .slot img { width: 40px; height: 40px; image-rendering: pixelated; }
 
-        /* Вопрос (Квест) */
         #quest-box {
-            position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
+            position: absolute; top: 5%; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.6); padding: 15px 30px; border: 4px solid #fff;
             color: white; text-align: center; max-width: 600px;
         }
-        #q-text { font-size: 28px; color: #ffff55; text-shadow: 2px 2px 0 #3f3f3f; }
+        #q-text { font-size: 32px; color: #ffff55; text-shadow: 2px 2px 0 #3f3f3f; }
 
-        /* Оверлей урона */
-        #damage-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s;
-        }
-
-        #game-over {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(100,0,0,0.8); flex-direction: column;
-            align-items: center; justify-content: center; color: white;
-        }
-        h1 { font-size: 80px; text-shadow: 5px 5px 0 #000; margin: 0; }
+        #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; }
+        
+        #game-over { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(100,0,0,0.8); flex-direction: column; align-items: center; justify-content: center; color: white; }
     </style>
 </head>
 <body>
@@ -94,14 +62,17 @@
 
 <div id="hud">
     <div id="quest-box">
-        <div style="color: #aaa; font-size: 20px;">ТЕКУЩАЯ ЗАДАЧА:</div>
-        <div id="q-text">Загрузка мира...</div>
+        <div style="color: #aaa; font-size: 20px;">ЗАДАНИЕ:</div>
+        <div id="q-text">Загрузка...</div>
     </div>
 
     <div id="crosshair"></div>
 
     <div id="bottom-ui">
-        <div id="xp-level">0</div>
+        <div id="xp-info">
+            <span>LVL: <span id="lvl-num">0</span></span>
+            <span style="color: yellow">COMBO: x<span id="combo-num">0</span></span>
+        </div>
         <div id="stats-row">
             <div class="hearts" id="hearts-container">
                 <div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div>
@@ -120,28 +91,27 @@
 </div>
 
 <div id="game-over">
-    <h1>GAME OVER</h1>
-    <p style="font-size: 30px; cursor: pointer; text-decoration: underline;" onclick="location.reload()">ВОЗРОДИТЬСЯ</p>
+    <h1 style="font-size: 80px; margin:0; text-shadow: 4px 4px 0 #000;">GAME OVER</h1>
+    <p style="font-size: 30px; cursor: pointer; text-decoration: underline;" onclick="location.reload()">НАЖМИ ЧТОБЫ ВОЗРОДИТЬСЯ</p>
 </div>
 
 <script>
-let scene, camera, renderer, gun, flash;
-let score = 0, currentQ = 0, health = 10;
+let scene, camera, renderer, gun, flash, listener, footstepSound;
+let score = 0, currentQ = 0, health = 10, combo = 0, lootCount = 0;
 let targets = [], particles = [], bonuses = [];
-let move = { fwd: false, bwd: false, left: false, right: false, jump: false };
+let move = { fwd: false, bwd: false, left: false, right: false };
 let vel = new THREE.Vector3();
 let pitch = 0, yaw = 0;
 let isDead = false;
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- ГЕНЕРАТОР ТЕКСТУР (Pixel Art Procedural) ---
+// --- ГЕНЕРАТОР ТЕКСТУР ---
 function createTexture(type) {
     const canvas = document.createElement('canvas');
     canvas.width = 64; canvas.height = 64;
     const ctx = canvas.getContext('2d');
     
-    // Базовый шум
     const fillNoise = (colorBase, variance) => {
         ctx.fillStyle = colorBase; ctx.fillRect(0,0,64,64);
         for(let i=0; i<400; i++) {
@@ -151,55 +121,40 @@ function createTexture(type) {
     };
 
     if(type === 'grass_top') {
-        fillNoise('#4C9141', 0.2); // Зеленый
-        ctx.fillStyle = '#3E7635';
+        fillNoise('#4C9141', 0.2); ctx.fillStyle = '#3E7635';
         for(let i=0; i<50; i++) ctx.fillRect(Math.random()*60, Math.random()*60, 4, 4);
-    } else if (type === 'dirt') {
-        fillNoise('#6d4e34', 0.3); // Коричневый
-    } else if (type === 'side') {
-        fillNoise('#6d4e34', 0.3); // Земля
-        ctx.fillStyle = '#4C9141'; ctx.fillRect(0,0,64,20); // Слой травы сверху
-        for(let i=0; i<20; i++) ctx.fillRect(i*4, 20, 4, Math.random()*8); // Потеки травы
+    } else if (type === 'dirt') fillNoise('#6d4e34', 0.3);
+      else if (type === 'side') {
+        fillNoise('#6d4e34', 0.3); ctx.fillStyle = '#4C9141'; ctx.fillRect(0,0,64,20);
+        for(let i=0; i<20; i++) ctx.fillRect(i*4, 20, 4, Math.random()*8);
     } else if (type === 'wood') {
-        ctx.fillStyle = '#5c4033'; ctx.fillRect(0,0,64,64);
-        ctx.fillStyle = '#4a332a';
-        for(let i=1; i<4; i++) ctx.fillRect(i*16, 0, 4, 64); // Полоски
+        ctx.fillStyle = '#5c4033'; ctx.fillRect(0,0,64,64); ctx.fillStyle = '#4a332a';
+        for(let i=1; i<4; i++) ctx.fillRect(i*16, 0, 4, 64);
     } else if (type === 'leaves') {
-        fillNoise('#2d5a27', 0.1);
-        ctx.fillStyle = '#1e3c1a'; 
+        fillNoise('#2d5a27', 0.1); ctx.fillStyle = '#1e3c1a'; 
         for(let i=0; i<30; i++) ctx.fillRect(Math.random()*60, Math.random()*60, 6, 6);
     } else if (type === 'gold') {
         ctx.fillStyle = '#FFD700'; ctx.fillRect(0,0,64,64);
         ctx.strokeStyle = '#DAA520'; ctx.lineWidth = 4; ctx.strokeRect(2,2,60,60);
-        ctx.fillStyle = '#FFF'; ctx.fillRect(10,10,10,10); // Блик
-    } else if (type === 'mob_skin') {
-        fillNoise('#5D995D', 0.2); // Зомби цвет
-    } else if (type === 'mob_clothes') {
-        fillNoise('#3C50C4', 0.2); // Синие штаны
+        ctx.fillStyle = '#FFF'; ctx.fillRect(10,10,10,10);
     }
 
     const tex = new THREE.CanvasTexture(canvas);
-    tex.magFilter = THREE.NearestFilter; // Пикселизация
-    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
     return tex;
 }
 
 const textures = {
-    grass: createTexture('grass_top'),
-    dirt: createTexture('dirt'),
-    side: createTexture('side'),
-    wood: createTexture('wood'),
-    leaves: createTexture('leaves'),
-    gold: createTexture('gold'),
-    skin: createTexture('mob_skin'),
-    clothes: createTexture('mob_clothes')
+    grass: createTexture('grass_top'), dirt: createTexture('dirt'),
+    side: createTexture('side'), wood: createTexture('wood'),
+    leaves: createTexture('leaves'), gold: createTexture('gold')
 };
 
 const config = {
     questions: [
         { q: "Какой инструмент добывает камень?", a: ["Лопата", "Кирка", "Топор"], c: 1 },
         { q: "Из чего делается портал в Ад?", a: ["Обсидиан", "Бедрок", "Лава"], c: 0 },
-        { q: "Как зовут дракона края?", a: ["Джин", "Эндер", "Джин"], c: 1 }, // Имя Jean?
+        { q: "Как зовут дракона края?", a: ["Джин", "Эндер", "Джин"], c: 1 },
         { q: "Что выпадает из скелета?", a: ["Гнилая плоть", "Нить", "Кости"], c: 2 }
     ]
 };
@@ -207,28 +162,48 @@ const config = {
 function init() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.Fog(0x87CEEB, 20, 80); // Туман как в майнкрафте
+    scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
 
     camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
     camera.rotation.order = 'YXZ';
 
-    renderer = new THREE.WebGLRenderer({ antialias: false }); // Важно для пиксельности
+    // ЗВУКОВАЯ СИСТЕМА
+    listener = new THREE.AudioListener();
+    camera.add(listener);
+    const audioLoader = new THREE.AudioLoader();
+    footstepSound = new THREE.Audio(listener);
+    audioLoader.load('https://github.com/kgbgamelab/minecraft/raw/refs/heads/main/footsteps.wav', function(buffer) {
+        footstepSound.setBuffer(buffer);
+        footstepSound.setLoop(true);
+        footstepSound.setVolume(0.5);
+    });
+
+    renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
     // Свет
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambient);
-    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.9);
     sun.position.set(50, 100, 30);
     sun.castShadow = true;
     sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048;
     scene.add(sun);
 
+    // Визуальное Солнце
+    const sunGeo = new THREE.BoxGeometry(10, 10, 1);
+    const sunMesh = new THREE.Mesh(sunGeo, new THREE.MeshBasicMaterial({color: 0xffffee}));
+    sunMesh.position.set(40, 80, -60);
+    sunMesh.lookAt(0,0,0);
+    scene.add(sunMesh);
+
     createWorld();
+    createClouds();
     createWeapon();
+    spawnBonuses();
     loadQuestion();
     
     document.addEventListener('keydown', e => handleKeys(e.code, true));
@@ -245,61 +220,43 @@ function init() {
 }
 
 function createWorld() {
-    // Генерация блоков земли (Псевдо-воксели)
-    const groundGeo = new THREE.BoxGeometry(1, 1, 1);
-    const groundMats = [
-        new THREE.MeshLambertMaterial({map: textures.side}), // right
-        new THREE.MeshLambertMaterial({map: textures.side}), // left
-        new THREE.MeshLambertMaterial({map: textures.grass}), // top
-        new THREE.MeshLambertMaterial({map: textures.dirt}), // bottom
-        new THREE.MeshLambertMaterial({map: textures.side}), // front
-        new THREE.MeshLambertMaterial({map: textures.side}), // back
-    ];
-
-    // Большая плоскость пола, чтобы не лагало от тысяч блоков
     const floorGeo = new THREE.PlaneGeometry(100, 100);
-    textures.grass.wrapS = THREE.RepeatWrapping;
-    textures.grass.wrapT = THREE.RepeatWrapping;
+    textures.grass.wrapS = THREE.RepeatWrapping; textures.grass.wrapT = THREE.RepeatWrapping;
     textures.grass.repeat.set(100, 100);
     const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({map: textures.grass}));
-    floor.rotation.x = -Math.PI/2;
-    floor.receiveShadow = true;
+    floor.rotation.x = -Math.PI/2; floor.receiveShadow = true;
     scene.add(floor);
 
-    // Деревья (кубические)
-    for(let i=0; i<20; i++) {
+    // Деревья
+    for(let i=0; i<25; i++) {
         const x = Math.floor(Math.random()*80 - 40);
         const z = Math.floor(Math.random()*80 - 40);
         createTree(x, z);
     }
+}
 
-    // "Горы" (кубы вдалеке)
-    const stoneMat = new THREE.MeshLambertMaterial({color: 0x757575});
+function createClouds() {
+    const cloudGeo = new THREE.BoxGeometry(10, 4, 6);
+    const cloudMat = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.8});
     for(let i=0; i<15; i++) {
-        const h = Math.random() * 10 + 5;
-        const m = new THREE.Mesh(new THREE.BoxGeometry(10, h, 10), stoneMat);
-        m.position.set(Math.random()*120-60, h/2, Math.random()*120-60);
-        if(m.position.distanceTo(new THREE.Vector3(0,0,0)) > 30) scene.add(m);
+        const c = new THREE.Mesh(cloudGeo, cloudMat);
+        c.position.set(Math.random()*200-100, 40 + Math.random()*10, Math.random()*200-100);
+        scene.add(c);
     }
 }
 
 function createTree(x, z) {
     const group = new THREE.Group();
-    // Ствол
-    const trunkGeo = new THREE.BoxGeometry(1, 5, 1);
-    const trunk = new THREE.Mesh(trunkGeo, new THREE.MeshLambertMaterial({map: textures.wood}));
-    trunk.position.y = 2.5;
-    trunk.castShadow = true;
+    const trunk = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 1), new THREE.MeshLambertMaterial({map: textures.wood}));
+    trunk.position.y = 2.5; trunk.castShadow = true;
     
-    // Листва (Блоки)
     const leafGeo = new THREE.BoxGeometry(1, 1, 1);
     const leafMat = new THREE.MeshLambertMaterial({map: textures.leaves, transparent: true});
     
-    // Генерируем крону
     for(let lx=-2; lx<=2; lx++) {
         for(let ly=0; ly<=2; ly++) {
             for(let lz=-2; lz<=2; lz++) {
-                if(Math.abs(lx)+Math.abs(ly)+Math.abs(lz) < 4) { // Скругляем
+                if(Math.abs(lx)+Math.abs(ly)+Math.abs(lz) < 4) {
                     const l = new THREE.Mesh(leafGeo, leafMat);
                     l.position.set(lx, 4+ly, lz);
                     group.add(l);
@@ -314,64 +271,65 @@ function createTree(x, z) {
 
 function createWeapon() {
     gun = new THREE.Group();
-    
-    // Модель руки Стива/Зомби
-    const armGeo = new THREE.BoxGeometry(0.3, 0.3, 1.2);
-    const armMat = new THREE.MeshLambertMaterial({map: textures.skin}); // Цвет кожи
-    const sleeveMat = new THREE.MeshLambertMaterial({map: textures.clothes}); // Рукав
-    
-    // Просто блочная "пушка" стилизованная
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0x333}));
-    
     gun.add(body);
-    
     flash = new THREE.PointLight(0xffaa00, 0, 4);
-    flash.position.z = -1;
-    gun.add(flash);
+    flash.position.z = -1; gun.add(flash);
     scene.add(gun);
 }
 
+// --- ТВОЯ ФУНКЦИЯ ДЛЯ МОБОВ ---
 function createMob(text) {
     const mob = new THREE.Group();
+    const skinMat = new THREE.MeshLambertMaterial({color: 0x3ab049});
+    const clothesMat = new THREE.MeshLambertMaterial({color: 0x3a5ab0});
     
-    const matSkin = new THREE.MeshLambertMaterial({map: textures.skin});
-    const matClothes = new THREE.MeshLambertMaterial({map: textures.clothes});
-
-    // Голова
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), matSkin);
-    head.position.y = 1.75;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), clothesMat);
+    body.position.y = 1.125; // Поднял чуть выше, чтобы не проваливались
     
-    // Тело
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.25), matClothes);
-    body.position.y = 1.125;
-
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), skinMat);
+    head.position.y = 2.075; // 1.125 + 0.6 + 0.35
+    
     // Руки
-    const armGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2);
-    const armL = new THREE.Mesh(armGeo, matSkin); armL.position.set(-0.35, 1.125, 0);
-    const armR = new THREE.Mesh(armGeo, matSkin); armR.position.set(0.35, 1.125, 0);
-
-    // Ноги
-    const legGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2);
-    const legL = new THREE.Mesh(legGeo, matClothes); legL.position.set(-0.15, 0.375, 0);
-    const legR = new THREE.Mesh(legGeo, matClothes); legR.position.set(0.15, 0.375, 0);
-
-    mob.add(head, body, armL, armR, legL, legR);
+    const armG = new THREE.BoxGeometry(0.3, 1, 0.3);
+    const armL = new THREE.Mesh(armG, skinMat); armL.position.set(-0.6, 1.6, 0);
+    const armR = new THREE.Mesh(armG, skinMat); armR.position.set(0.6, 1.6, 0);
     
-    // Текст имени (canvas sprite)
+    // Ноги
+    const legG = new THREE.BoxGeometry(0.35, 1, 0.4);
+    const legL = new THREE.Mesh(legG, clothesMat); legL.position.set(-0.2, 0.5, 0);
+    const legR = new THREE.Mesh(legG, clothesMat); legR.position.set(0.2, 0.5, 0);
+    
+    mob.add(body, head, armL, armR, legL, legR);
+    mob.castShadow = true;
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 256; canvas.height = 64;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64);
-    ctx.font = '30px monospace'; ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(text, 128, 32);
+    canvas.width = 512; canvas.height = 128;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, 512, 128);
+    ctx.fillStyle = '#00ff00'; ctx.font = 'bold 80px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(text, 256, 90);
     
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
-    sprite.scale.set(2, 0.5, 1);
-    sprite.position.y = 2.3;
+    sprite.scale.set(3, 0.75, 1); sprite.position.y = 2.8;
     mob.add(sprite);
 
+    // Добавляю данные для анимации и логики, чтобы игра не ломалась
     mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false };
+
     return mob;
+}
+
+function spawnBonuses() {
+    const boxGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    const boxMat = new THREE.MeshLambertMaterial({map: textures.gold});
+    for(let i=0; i<5; i++) {
+        const b = new THREE.Mesh(boxGeo, boxMat);
+        b.position.set(Math.random()*60-30, 0.4, Math.random()*60-30);
+        b.rotation.y = Math.random();
+        scene.add(b);
+        bonuses.push(b);
+    }
 }
 
 function loadQuestion() {
@@ -392,7 +350,7 @@ function shoot() {
     if(isDead) return;
     if(audioCtx.state === 'suspended') audioCtx.resume();
     
-    // Звук (синтез)
+    // Звук выстрела
     const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
     osc.type = 'square'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime+0.1);
@@ -400,7 +358,6 @@ function shoot() {
     osc.connect(g); g.connect(audioCtx.destination);
     osc.start(); osc.stop(audioCtx.currentTime+0.1);
 
-    // Анимация отдачи
     gun.position.z += 0.2;
     flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50);
 
@@ -410,31 +367,44 @@ function shoot() {
 
     if(hits.length > 0) {
         let hit = hits[0].object;
-        while(hit.parent && hit.type !== 'Group') hit = hit.parent;
         
+        // Проверка бонуса
+        if(bonuses.includes(hit)) {
+            scene.remove(hit);
+            bonuses = bonuses.filter(b => b !== hit);
+            if(lootCount < 5) {
+                document.getElementById('slot-'+lootCount).innerText = "$";
+                lootCount++;
+            }
+            // Звук лута
+            const oL = audioCtx.createOscillator(); oL.type = 'triangle';
+            oL.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+            oL.connect(audioCtx.destination); oL.start(); oL.stop(audioCtx.currentTime+0.1);
+            spawnParticles(hit.position, 0xffff00);
+            return;
+        }
+
+        while(hit.parent && hit.type !== 'Group') hit = hit.parent;
         const target = targets.find(t => t.obj === hit);
+        
         if(target) {
             if(target.isCorrect) {
-                // XP Sound
-                const o2 = audioCtx.createOscillator(); const g2 = audioCtx.createGain();
-                o2.frequency.setValueAtTime(800, audioCtx.currentTime); 
-                g2.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.2);
-                o2.connect(g2); g2.connect(audioCtx.destination); o2.start(); o2.stop(audioCtx.currentTime+0.2);
-
-                score += 1;
-                document.getElementById('xp-level').innerText = score;
-                document.getElementById('xp-fill').style.width = (score*10)%100 + '%';
+                // Правильный ответ
+                score += 100 + (combo * 50);
+                combo++;
+                document.getElementById('lvl-num').innerText = Math.floor(score/500);
+                document.getElementById('combo-num').innerText = combo;
+                document.getElementById('xp-fill').style.width = (score%500)/5 + '%';
                 
                 spawnParticles(hit.position, 0x00ff00);
                 currentQ = (currentQ + 1) % config.questions.length;
                 loadQuestion();
             } else {
-                // Aggro Sound
-                const o3 = audioCtx.createOscillator(); o3.type='sawtooth';
-                o3.frequency.setValueAtTime(100, audioCtx.currentTime); 
-                o3.connect(audioCtx.destination); o3.start(); o3.stop(audioCtx.currentTime+0.3);
-
+                // Ошибка
+                combo = 0;
+                document.getElementById('combo-num').innerText = combo;
                 target.obj.userData.isAggro = true;
+                // Красим части в красный
                 target.obj.userData.parts.body.material.color.set(0xff0000);
             }
         }
@@ -444,13 +414,11 @@ function shoot() {
 function takeDamage() {
     if(isDead) return;
     health--;
-    
     const hearts = document.querySelectorAll('.heart');
     if(hearts[health]) hearts[health].classList.add('lost');
     
     const overlay = document.getElementById('damage-overlay');
-    overlay.style.opacity = 0.5;
-    setTimeout(()=>overlay.style.opacity=0, 150);
+    overlay.style.opacity = 0.5; setTimeout(()=>overlay.style.opacity=0, 150);
 
     if(health <= 0) {
         isDead = true;
@@ -490,57 +458,45 @@ function animate() {
     const delta = clock.getDelta();
     const now = Date.now() / 1000;
 
-    // Физика игрока (простая)
-    if(move.fwd) vel.z = -10 * delta;
-    else if(move.bwd) vel.z = 10 * delta;
-    else vel.z = 0;
-    
-    if(move.left) vel.x = -10 * delta;
-    else if(move.right) vel.x = 10 * delta;
-    else vel.x = 0;
+    // Движение
+    if(move.fwd) vel.z = -10 * delta; else if(move.bwd) vel.z = 10 * delta; else vel.z = 0;
+    if(move.left) vel.x = -10 * delta; else if(move.right) vel.x = 10 * delta; else vel.x = 0;
+    camera.translateX(vel.x); camera.translateZ(vel.z); camera.position.y = 1.7;
 
-    camera.translateX(vel.x);
-    camera.translateZ(vel.z);
-    camera.position.y = 1.7;
+    // ЗВУК ШАГОВ (играет только если двигаемся)
+    if (footstepSound && footstepSound.buffer) {
+        const isMoving = (vel.x !== 0 || vel.z !== 0);
+        if (isMoving && !footstepSound.isPlaying) footstepSound.play();
+        else if (!isMoving && footstepSound.isPlaying) footstepSound.stop();
+    }
 
-    // Анимация оружия (Bobbing)
-    gun.position.copy(camera.position);
-    gun.quaternion.copy(camera.quaternion);
+    // Оружие
+    gun.position.copy(camera.position); gun.quaternion.copy(camera.quaternion);
     const isMoving = (vel.x!==0 || vel.z!==0);
-    gun.translateX(0.4); 
-    gun.translateY(-0.4 + (isMoving ? Math.sin(now*12)*0.03 : 0)); 
-    gun.translateZ(-0.6);
+    gun.translateX(0.4); gun.translateY(-0.4 + (isMoving ? Math.sin(now*12)*0.03 : 0)); gun.translateZ(-0.6);
 
     // Мобы
     targets.forEach(t => {
         const mob = t.obj;
         const parts = mob.userData.parts;
-        
         if(mob.userData.isAggro) {
             mob.lookAt(camera.position.x, 0, camera.position.z);
-            mob.translateZ(3 * delta); // Скорость бега
-            if(mob.position.distanceTo(camera.position) < 1.0) {
-                takeDamage();
-                mob.translateZ(-2); // Отскок
-            }
+            mob.translateZ(3 * delta);
+            if(mob.position.distanceTo(camera.position) < 1.0) { takeDamage(); mob.translateZ(-2); }
         } else {
-            // Патруль
-            mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.02;
-            mob.translateZ(1 * delta);
+            mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.02; mob.translateZ(1 * delta);
         }
-
-        // Анимация ходьбы рук/ног
         const w = Math.sin(now * 10);
         parts.armL.rotation.x = -w; parts.armR.rotation.x = w;
         parts.legL.rotation.x = w; parts.legR.rotation.x = -w;
     });
 
+    // Бонусы (Вращение)
+    bonuses.forEach(b => b.rotation.y += 0.02);
+
     // Частицы
     for(let i=particles.length-1; i>=0; i--) {
-        const p = particles[i];
-        p.m.position.add(p.v);
-        p.v.y -= 0.02; // Гравитация
-        p.m.rotation.x += 0.1;
+        const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; p.m.rotation.x += 0.1;
         if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); }
     }
 
