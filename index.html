@@ -3,226 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft Island Quest</title>
+    <title>Minecraft Ultra Pro Max</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Courier New', monospace; }
-        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; color: white; text-shadow: 2px 2px #000; }
-        #stats { position: absolute; top: 20px; left: 20px; font-size: 1.5em; }
+        body { margin: 0; overflow: hidden; background: #4a85fb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; color: white; text-shadow: 3px 3px 0px #3c3c3c; }
+        #stats { position: absolute; top: 30px; left: 30px; font-size: 2em; }
         #question-ui {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.6); border: 4px solid #fff;
-            padding: 15px 40px; text-align: center; pointer-events: none;
+            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7); border: 6px solid #555;
+            padding: 20px 50px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
-            border: 2px solid white; transform: translate(-50%, -50%);
+            position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
+            transform: translate(-50%, -50%);
         }
+        #crosshair::before, #crosshair::after {
+            content: ''; position: absolute; background: white;
+        }
+        #crosshair::before { top: 11px; width: 24px; height: 2px; }
+        #crosshair::after { left: 11px; height: 24px; width: 2px; }
     </style>
 </head>
 <body>
 
 <div id="hud">
-    <div id="stats">ОЧКИ: <span id="score">0</span></div>
+    <div id="stats">XP: <span id="score">0</span></div>
     <div id="question-ui">
-        <div id="q-text" style="font-size: 1.5em; font-weight: bold;">ЗАГРУЗКА...</div>
+        <div style="color: #aaa; font-size: 0.8em; margin-bottom: 5px;">ТЕКУЩИЙ КВЕСТ</div>
+        <div id="q-text" style="font-size: 1.8em; font-weight: bold; color: #00ff00;">...</div>
     </div>
     <div id="crosshair"></div>
 </div>
 
 <script>
 let scene, camera, renderer, gun, flash, score = 0, currentQ = 0;
-let targets = [], clouds = [];
+let targets = [], clouds = [], particles = [];
 let move = { fwd: false, bwd: false, left: false, right: false };
-let pitch = 0, yaw = 0; // Для правильного вращения без наклонов
+let pitch = 0, yaw = 0;
 const clock = new THREE.Clock();
+
+// Звуки
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSnd(f, t, d, v=0.1) {
+    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    o.type = t; o.frequency.setValueAtTime(f, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + d);
+    g.gain.setValueAtTime(v, audioCtx.currentTime);
+    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + d);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + d);
+}
 
 const config = {
     questions: [
-        { q: "Что едят криперы?", a: ["Порох", "Траву", "Игроков"], c: 2 },
-        { q: "Главный враг Стива?", a: ["Эндермен", "Херобрин", "Зомби"], c: 1 },
-        { q: "Из чего крафтят верстак?", a: ["Камень", "Доски", "Железо"], c: 1 }
+        { q: "Как называется редчайшая руда в Minecraft?", a: ["Алмаз", "Незерит", "Изумруд"], c: 1 },
+        { q: "Какой моб боится воды?", a: ["Эндермен", "Скелет", "Крипер"], c: 0 },
+        { q: "Сколько единиц шерсти нужно для кровати?", a: ["2", "3", "4"], c: 1 }
     ]
 };
 
-// --- ЗВУКОВАЯ СИСТЕМА ---
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(freq, type, duration, vol=0.1) {
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + duration);
-    g.gain.setValueAtTime(vol, audioCtx.currentTime);
-    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
-    osc.connect(g); g.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + duration);
-}
-
 function init() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+    scene.background = new THREE.Color(0x4a85fb);
+    scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
 
     camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.rotation.order = 'YXZ'; // Важно для FPS управления
+    camera.rotation.order = 'YXZ';
 
     renderer = new THREE.WebGLRenderer({ antialias: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    // Свет
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const sun = new THREE.DirectionalLight(0xffffff, 1);
-    sun.position.set(50, 100, 50);
+    // Освещение
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+    sun.position.set(40, 60, 40);
     sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    sun.shadow.camera.left = -50; sun.shadow.camera.right = 50;
+    sun.shadow.camera.top = 50; sun.shadow.camera.bottom = -50;
     scene.add(sun);
 
-    // Солнце (визуальное)
-    const sunG = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 1), new THREE.MeshBasicMaterial({color: 0xffffaa}));
-    sunG.position.set(40, 60, -80);
-    scene.add(sunG);
-
-    createWorld();
-    createGun();
+    createTerrain();
+    createWeapon();
+    loadQuestion();
     
-    window.addEventListener('keydown', e => handleKeys(e.code, true));
+    window.addEventListener('keydown', e => { if(e.code in move || e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD') handleKeys(e.code, true); });
     window.addEventListener('keyup', e => handleKeys(e.code, false));
     window.addEventListener('mousedown', shoot);
     window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('resize', onWindowResize);
     
-    loadQuestion();
     animate();
 }
 
-function createWorld() {
-    // Остров
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(60, 2, 60), new THREE.MeshLambertMaterial({color: 0x567d46}));
-    ground.position.y = -1;
+function createTerrain() {
+    // Основа острова с "обводкой"
+    const groundGeo = new THREE.BoxGeometry(80, 4, 80);
+    const groundMat = new THREE.MeshLambertMaterial({color: 0x5da34b});
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.position.y = -2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Деревья
-    for(let i=0; i<8; i++) {
+    // Добавляем случайные "кучки" земли и цветов
+    for(let i=0; i<60; i++) {
+        const h = Math.random() * 2;
+        const block = new THREE.Mesh(
+            new THREE.BoxGeometry(2, h, 2),
+            new THREE.MeshLambertMaterial({color: 0x4d8d3f})
+        );
+        block.position.set(Math.random()*70-35, h/2 - 0.1, Math.random()*70-35);
+        block.receiveShadow = true;
+        block.castShadow = true;
+        scene.add(block);
+        
+        if(Math.random() > 0.7) {
+            const flower = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 0.2), new THREE.MeshBasicMaterial({color: Math.random() > 0.5 ? 0xff0000 : 0xffff00}));
+            flower.position.set(block.position.x, h, block.position.z);
+            scene.add(flower);
+        }
+    }
+
+    // Деревья (более сложные)
+    for(let i=0; i<10; i++) {
         const tree = new THREE.Group();
-        const trunk = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 1), new THREE.MeshLambertMaterial({color: 0x4b3621}));
-        const leaves = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshLambertMaterial({color: 0x2d5a27}));
-        leaves.position.y = 3;
+        const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.8), new THREE.MeshLambertMaterial({color: 0x6d5032}));
+        trunk.position.y = 2.5;
+        trunk.castShadow = true;
+        
+        const leaves = new THREE.Group();
+        for(let j=0; j<3; j++) {
+            const layer = new THREE.Mesh(new THREE.BoxGeometry(4-j, 1.2, 4-j), new THREE.MeshLambertMaterial({color: 0x2d5a27}));
+            layer.position.y = 4 + j;
+            layer.castShadow = true;
+            leaves.add(layer);
+        }
         tree.add(trunk, leaves);
-        tree.position.set(Math.random()*40-20, 1, Math.random()*40-20);
+        tree.position.set(Math.random()*60-30, 0, Math.random()*60-30);
         scene.add(tree);
     }
 
     // Облака
-    for(let i=0; i<15; i++) {
-        const cloud = new THREE.Mesh(new THREE.BoxGeometry(10, 2, 6), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.8}));
-        cloud.position.set(Math.random()*200-100, 30 + Math.random()*10, Math.random()*200-100);
+    for(let i=0; i<20; i++) {
+        const cloud = new THREE.Mesh(new THREE.BoxGeometry(12, 3, 8), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.85}));
+        cloud.position.set(Math.random()*300-150, 40+Math.random()*15, Math.random()*300-150);
         scene.add(cloud);
         clouds.push(cloud);
     }
 }
 
-function createGun() {
+function createWeapon() {
     gun = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0x222222}));
-    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.1), new THREE.MeshLambertMaterial({color: 0x444444}));
-    tip.position.z = -0.4;
-    gun.add(body, tip);
-
-    flash = new THREE.PointLight(0xffaa00, 0, 5);
-    flash.position.z = -0.5;
-    gun.add(flash);
+    const matMain = new THREE.MeshLambertMaterial({color: 0x333333});
+    const matDetail = new THREE.MeshLambertMaterial({color: 0x555555});
     
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 1.2), matMain);
+    const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.5), matDetail);
+    barrel.position.z = -0.8;
+    const scope = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.4), matDetail);
+    scope.position.y = 0.25;
+    
+    gun.add(body, barrel, scope);
+    flash = new THREE.PointLight(0xffaa00, 0, 10);
+    flash.position.z = -1;
+    gun.add(flash);
     scene.add(gun);
 }
 
 function createMob(text) {
     const mob = new THREE.Group();
-    const mat = new THREE.MeshLambertMaterial({color: 0x2e8b57});
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.4), mat);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), mat);
-    head.position.y = 0.9;
+    const skinMat = new THREE.MeshLambertMaterial({color: 0x3ab049});
+    const clothesMat = new THREE.MeshLambertMaterial({color: 0x3a5ab0});
     
-    const faceG = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-    const eye = new THREE.Mesh(faceG, new THREE.MeshBasicMaterial({color: 0x000000}));
-    const eyeL = eye.clone(); eyeL.position.set(-0.15, 1, 0.3);
-    const eyeR = eye.clone(); eyeR.position.set(0.15, 1, 0.3);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), clothesMat);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), skinMat);
+    head.position.y = 0.95;
     
-    mob.add(body, head, eyeL, eyeR);
+    // Руки
+    const armG = new THREE.BoxGeometry(0.3, 1, 0.3);
+    const armL = new THREE.Mesh(armG, skinMat); armL.position.set(-0.6, 0.1, 0);
+    const armR = new THREE.Mesh(armG, skinMat); armR.position.set(0.6, 0.1, 0);
+    
+    // Ноги
+    const legG = new THREE.BoxGeometry(0.35, 1, 0.4);
+    const legL = new THREE.Mesh(legG, clothesMat); legL.position.set(-0.2, -1, 0);
+    const legR = new THREE.Mesh(legG, clothesMat); legR.position.set(0.2, -1, 0);
+    
+    mob.add(body, head, armL, armR, legL, legR);
+    mob.castShadow = true;
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 256; canvas.height = 64;
-    ctx.fillStyle = 'white'; ctx.font = 'bold 40px Arial'; ctx.textAlign = 'center';
-    ctx.fillText(text, 128, 45);
+    canvas.width = 512; canvas.height = 128;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, 512, 128);
+    ctx.fillStyle = '#00ff00'; ctx.font = 'bold 80px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText(ans = text, 256, 90);
+    
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
-    sprite.scale.set(2, 0.5, 1); sprite.position.y = 1.6;
+    sprite.scale.set(3, 0.75, 1); sprite.position.y = 1.8;
     mob.add(sprite);
 
-    return mob;
+    return { group: mob, armL, armR, legL, legR };
 }
 
 function loadQuestion() {
-    targets.forEach(t => scene.remove(t.obj));
+    targets.forEach(t => scene.remove(t.obj.group));
     targets = [];
     const qData = config.questions[currentQ];
     document.getElementById('q-text').innerText = qData.q;
 
     qData.a.forEach((ans, i) => {
-        const obj = createMob(ans);
-        obj.position.set(Math.random()*40-20, 0.6, Math.random()*40-20);
-        scene.add(obj);
-        targets.push({ obj, isCorrect: i === qData.c, angle: Math.random()*Math.PI*2 });
+        const mobData = createMob(ans);
+        mobData.group.position.set(Math.random()*50-25, 1.5, Math.random()*50-25);
+        scene.add(mobData.group);
+        targets.push({ obj: mobData, isCorrect: i === qData.c, angle: Math.random()*Math.PI*2, phase: Math.random()*10 });
     });
-}
-
-function onMouseMove(e) {
-    if (document.pointerLockElement) {
-        yaw -= e.movementX * 0.002;
-        pitch -= e.movementY * 0.002;
-        pitch = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, pitch));
-        
-        camera.rotation.set(pitch, yaw, 0); // Обнуляем Z, чтобы не падать набок
-    }
 }
 
 function shoot() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    playSound(400, 'square', 0.1);
+    playSnd(440, 'square', 0.1, 0.05);
     
-    // Анимация отдачи
-    gun.position.z += 0.3;
-    flash.intensity = 2;
-    setTimeout(() => flash.intensity = 0, 50);
+    gun.position.z += 0.4;
+    flash.intensity = 3;
+    setTimeout(() => flash.intensity = 0, 40);
 
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-    const hits = raycaster.intersectObjects(targets.map(t => t.obj), true);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(0,0), camera);
+    const hits = ray.intersectObjects(scene.children, true);
 
     if(hits.length > 0) {
         let hitObj = hits[0].object;
+        createParticles(hits[0].point);
+        
         while(hitObj.parent && hitObj.type !== 'Group') hitObj = hitObj.parent;
-        const target = targets.find(t => t.obj === hitObj);
+        const target = targets.find(t => t.obj.group === hitObj);
 
-        if(target.isCorrect) {
-            playSound(600, 'sine', 0.2, 0.2);
-            score += 100;
-            document.getElementById('score').innerText = score;
-            currentQ = (currentQ + 1) % config.questions.length;
-            loadQuestion();
-        } else {
-            playSound(100, 'sawtooth', 0.3);
-            hitObj.position.y += 0.5; // Прыжок от испуга
+        if(target) {
+            if(target.isCorrect) {
+                playSnd(880, 'sine', 0.2, 0.1);
+                score += 500;
+                document.getElementById('score').innerText = score;
+                currentQ = (currentQ + 1) % config.questions.length;
+                loadQuestion();
+            } else {
+                playSnd(150, 'sawtooth', 0.2);
+                hitObj.position.y += 1;
+            }
         }
     }
 }
 
-function handleKeys(code, isPressed) {
-    if(code === 'KeyW') move.fwd = isPressed;
-    if(code === 'KeyS') move.bwd = isPressed;
-    if(code === 'KeyA') move.left = isPressed;
-    if(code === 'KeyD') move.right = isPressed;
+function createParticles(pos) {
+    for(let i=0; i<8; i++) {
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshBasicMaterial({color: 0xdddddd}));
+        p.position.copy(pos);
+        const v = new THREE.Vector3((Math.random()-0.5)*0.2, Math.random()*0.2, (Math.random()-0.5)*0.2);
+        scene.add(p);
+        particles.push({mesh: p, vel: v, life: 1.0});
+    }
+}
+
+function onMouseMove(e) {
+    if (document.pointerLockElement) {
+        yaw -= e.movementX * 0.0015;
+        pitch -= e.movementY * 0.0015;
+        pitch = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, pitch));
+        camera.rotation.set(pitch, yaw, 0);
+    }
+}
+
+function handleKeys(code, isP) {
+    if(code === 'KeyW') move.fwd = isP;
+    if(code === 'KeyS') move.bwd = isP;
+    if(code === 'KeyA') move.left = isP;
+    if(code === 'KeyD') move.right = isP;
 }
 
 function animate() {
@@ -230,46 +293,65 @@ function animate() {
     const delta = clock.getDelta();
     const time = Date.now() * 0.002;
 
-    // Ходьба
-    const speed = 8 * delta;
+    // Движение
+    const speed = 10 * delta;
     if(move.fwd) camera.translateZ(-speed);
     if(move.bwd) camera.translateZ(speed);
     if(move.left) camera.translateX(-speed);
     if(move.right) camera.translateX(speed);
-    camera.position.y = 1.6;
+    camera.position.y = 1.8;
+    camera.position.x = Math.max(-38, Math.min(38, camera.position.x));
+    camera.position.z = Math.max(-38, Math.min(38, camera.position.z));
 
-    // Границы острова
-    camera.position.x = Math.max(-28, Math.min(28, camera.position.x));
-    camera.position.z = Math.max(-28, Math.min(28, camera.position.z));
-
-    // Анимация пушки (покачивание + возврат отдачи)
+    // Оружие
     gun.position.copy(camera.position);
     gun.quaternion.copy(camera.quaternion);
-    const bobbing = (move.fwd || move.bwd || move.left || move.right) ? Math.sin(time*2)*0.02 : 0;
-    gun.translateX(0.35); 
-    gun.translateY(-0.3 + bobbing); 
-    gun.translateZ(-0.6);
-    gun.position.lerp(gun.position, 0.1); 
+    const walkBob = (move.fwd || move.bwd) ? Math.sin(time*3)*0.03 : 0;
+    gun.translateX(0.4); gun.translateY(-0.4 + walkBob); gun.translateZ(-0.7);
+    gun.position.lerp(gun.position, 0.2);
 
-    // Мобы
+    // Мобы и их анимация
     targets.forEach(t => {
-        t.obj.position.x += Math.cos(t.angle) * 0.02;
-        t.obj.position.z += Math.sin(t.angle) * 0.02;
-        t.obj.lookAt(camera.position.x, 0.6, camera.position.z);
-        if(Math.abs(t.obj.position.x) > 25 || Math.abs(t.obj.position.z) > 25) t.angle += Math.PI;
-        t.obj.position.y = THREE.MathUtils.lerp(t.obj.position.y, 0.6, 0.1);
+        t.obj.group.position.x += Math.cos(t.angle) * 0.03;
+        t.obj.group.position.z += Math.sin(t.angle) * 0.03;
+        t.obj.group.lookAt(camera.position.x, 1.5, camera.position.z);
+        
+        // Анимация ходьбы рук и ног
+        const swing = Math.sin(time * 4 + t.phase) * 0.5;
+        t.obj.armL.rotation.x = -swing;
+        t.obj.armR.rotation.x = swing;
+        t.obj.legL.rotation.x = swing;
+        t.obj.legR.rotation.x = -swing;
+
+        if(Math.abs(t.obj.group.position.x) > 35 || Math.abs(t.obj.group.position.z) > 35) t.angle += Math.PI;
+        t.obj.group.position.y = THREE.MathUtils.lerp(t.obj.group.position.y, 1.5, 0.1);
     });
 
-    // Облака
-    clouds.forEach(c => {
-        c.position.x += 0.01;
-        if(c.position.x > 100) c.position.x = -100;
-    });
+    // Частицы
+    for(let i=particles.length-1; i>=0; i--) {
+        const p = particles[i];
+        p.mesh.position.add(p.vel);
+        p.vel.y -= 0.01;
+        p.life -= 0.02;
+        p.mesh.scale.setScalar(p.life);
+        if(p.life <= 0) {
+            scene.remove(p.mesh);
+            particles.splice(i, 1);
+        }
+    }
+
+    clouds.forEach(c => { c.position.x += 0.02; if(c.position.x > 150) c.position.x = -150; });
 
     renderer.render(scene, camera);
 }
 
-document.body.addEventListener('click', () => document.body.requestPointerLock());
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+document.body.addEventListener('click', () => { if(audioCtx.state === 'suspended') audioCtx.resume(); document.body.requestPointerLock(); });
 init();
 </script>
 </body>
