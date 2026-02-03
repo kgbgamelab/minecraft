@@ -2,52 +2,64 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft: True Survival v4</title>
+    <title>Minecraft: True Survival v5</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
-        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+        
+        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; transition: transform 0.1s; }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
         #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+            position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
             transform: translate(-50%, -50%); mix-blend-mode: difference;
         }
-        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: white; }
-        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
-        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+        #crosshair::before { content: ''; position: absolute; top: 11px; left: 0; width: 24px; height: 2px; background: white; }
+        #crosshair::after { content: ''; position: absolute; top: 0; left: 11px; width: 2px; height: 24px; background: white; }
 
         #bottom-ui {
-            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-            width: 600px; height: 120px; text-align: center;
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            width: 600px; text-align: center;
         }
-        .hearts { display: flex; gap: 4px; justify-content: center; margin-bottom: 5px; }
-        .heart {
-            width: 24px; height: 24px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="red" d="M2,1 h2 v1 h2 v-1 h2 v2 h-1 v1 h-1 v1 h-1 v1 h-1 v1 h-2 v-1 h-1 v-1 h-1 v-1 h-1 v-2 h2 z" stroke="black" stroke-width="0.5"/></svg>');
-            background-size: cover; image-rendering: pixelated;
-        }
-        .heart.lost { filter: grayscale(100%) brightness(0.2); }
-
-        #xp-bar { width: 100%; height: 12px; background: #333; border: 2px solid #000; position: relative; margin-bottom: 10px; }
-        #xp-fill { height: 100%; background: #00ff00; width: 0%; transition: width 0.2s; }
-        #xp-info { position: absolute; top: -40px; width: 100%; display: flex; justify-content: center; gap: 20px; text-shadow: 2px 2px 0 #000; font-size: 30px; color: #80ff00; }
         
-        #hotbar { display: flex; justify-content: center; gap: 4px; background: rgba(0,0,0,0.5); padding: 5px; border: 2px solid #555; }
-        .slot {
-            width: 50px; height: 50px; background: #8b8b8b; border: 3px solid #373737; border-top-color: #fff; border-left-color: #fff;
-            display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; position: relative;
+        #hearts-container { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
+        .heart {
+            width: 32px; height: 32px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23ff0000" stroke="black" stroke-width="0.5" d="M2 1h2v1h2V1h2v2H7v1H6v1H5v1H4V5H3V4H2V2h2z"/></svg>');
+            background-size: contain; image-rendering: pixelated;
         }
-        .slot.active { border-color: white; background: #a0a0a0; }
+        .heart.lost { filter: grayscale(100%) brightness(0.3); }
+
+        #xp-bar { width: 100%; height: 16px; background: #222; border: 3px solid #000; position: relative; margin-bottom: 10px; }
+        #xp-fill { height: 100%; background: linear-gradient(to right, #00ff00, #55ff55); width: 0%; transition: width 0.2s; }
+        #xp-info { position: absolute; top: -35px; width: 100%; color: #80ff00; font-size: 30px; text-shadow: 2px 2px 0 #000; display: flex; justify-content: space-around; }
+
+        #hotbar { display: flex; justify-content: center; gap: 4px; background: rgba(0,0,0,0.6); padding: 5px; border: 2px solid #fff; border-radius: 4px; }
+        .slot {
+            width: 60px; height: 60px; background: #8b8b8b; border: 4px solid #373737; border-top-color: #ddd; border-left-color: #ddd;
+            display: flex; align-items: center; justify-content: center; font-size: 30px; color: white;
+        }
+        .slot.active { border-color: white; background: #a0a0a0; transform: scale(1.1); }
 
         #quest-box {
-            position: absolute; top: 5%; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.6); padding: 15px 30px; border: 4px solid #fff;
-            color: white; text-align: center; max-width: 600px;
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); padding: 15px 40px; border: 3px solid #fff;
+            color: white; text-align: center;
         }
-        #q-text { font-size: 32px; color: #ffff55; text-shadow: 2px 2px 0 #3f3f3f; }
+        #q-text { font-size: 32px; color: #ffff55; text-shadow: 2px 2px 0 #333; }
 
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; }
-        #game-over { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(100,0,0,0.8); flex-direction: column; align-items: center; justify-content: center; color: white; }
+        #game-over { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(50,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 999; }
     </style>
 </head>
 <body>
@@ -56,17 +68,16 @@
 
 <div id="hud">
     <div id="quest-box">
-        <div style="color: #aaa; font-size: 20px;">ЗАДАНИЕ:</div>
-        <div id="q-text">Загрузка мира...</div>
+        <div style="color: #aaa; font-size: 18px; letter-spacing: 2px;">ТЕКУЩИЙ ВОПРОС</div>
+        <div id="q-text">Загрузка...</div>
     </div>
     <div id="crosshair"></div>
     <div id="bottom-ui">
         <div id="xp-info">
             <span>XP: <span id="lvl-num">0</span></span>
-            <span style="color: yellow">COMBO: x<span id="combo-num">0</span></span>
+            <span style="color: #ffd700">COMBO: x<span id="combo-num">0</span></span>
         </div>
-        <div class="hearts" id="hearts-container">
-            <div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div>
+        <div id="hearts-container">
             <div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div>
         </div>
         <div id="xp-bar"><div id="xp-fill"></div></div>
@@ -74,20 +85,18 @@
             <div class="slot active" id="slot-0">🔫</div>
             <div class="slot" id="slot-1"></div>
             <div class="slot" id="slot-2"></div>
-            <div class="slot" id="slot-3"></div>
-            <div class="slot" id="slot-4"></div>
         </div>
     </div>
 </div>
 
 <div id="game-over">
-    <h1 style="font-size: 80px; margin:0; text-shadow: 4px 4px 0 #000;">GAME OVER</h1>
-    <p style="font-size: 30px; cursor: pointer; text-decoration: underline;" onclick="location.reload()">НАЖМИ ЧТОБЫ ВОЗРОДИТЬСЯ</p>
+    <h1 style="font-size: 100px; margin:0; text-shadow: 5px 5px 0 #000; color: #ff5555;">YOU DIED</h1>
+    <p style="font-size: 40px; cursor: pointer; color: #ffff55; text-decoration: underline;" onclick="location.reload()">Respawn</p>
 </div>
 
 <script>
 let scene, camera, renderer, weaponGroup, flash;
-let score = 0, currentQ = 0, health = 10, combo = 0;
+let score = 0, currentQ = 0, health = 5, combo = 0;
 let targets = [], particles = [], bonuses = [], items = [], birds = [];
 let move = { fwd: false, bwd: false, left: false, right: false };
 let vel = new THREE.Vector3();
@@ -95,43 +104,73 @@ let pitch = 0, yaw = 0;
 let isDead = false;
 let lastDamageTime = 0;
 let stepTimer = 0;
-let swingProgress = 0;
-let isSwinging = false;
+let swingProgress = 0, isSwinging = false;
 let currentWeaponType = 'gun';
 let inventory = ['gun']; 
 
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- ЗВУКИ (СИНТЕЗАТОР) ---
+// --- ЗВУКОВАЯ СИСТЕМА (FIXED) ---
+// Ссылка через CDN для обхода CORS
+const FOOTSTEP_URL = 'https://cdn.jsdelivr.net/gh/kgbgamelab/minecraft@main/footsteps.wav';
+let footstepAudioBuffer = null;
+
+// Загрузка шагов
+fetch(FOOTSTEP_URL)
+    .then(response => response.arrayBuffer())
+    .then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer))
+    .then(audioBuffer => { footstepAudioBuffer = audioBuffer; })
+    .catch(e => console.log("Ошибка звука шагов:", e));
+
 function playSound(type) {
     if(audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-    
-    if(type === 'step') { // Шаги
-        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*0.1, audioCtx.sampleRate);
-        const d = buf.getChannelData(0); for(let i=0; i<d.length; i++) d[i] = (Math.random()*2-1)*0.5;
-        const src = audioCtx.createBufferSource(); src.buffer = buf;
-        const f = audioCtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=400;
-        g.gain.setValueAtTime(0.3, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.1);
-        src.connect(f); f.connect(g); g.connect(audioCtx.destination); src.start();
-    } else if (type === 'hit') { // Удар по мобу
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime+0.2);
-        g.gain.setValueAtTime(0.5, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.2);
-        osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.2);
-    } else if (type === 'swing') { // Взмах
-        // Белый шум для свиста
-        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*0.15, audioCtx.sampleRate);
-        const d = buf.getChannelData(0); for(let i=0; i<d.length; i++) d[i] = (Math.random()*2-1)*0.5;
-        const src = audioCtx.createBufferSource(); src.buffer = buf;
-        const f = audioCtx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=800; 
-        f.frequency.linearRampToValueAtTime(300, audioCtx.currentTime+0.15); // Эффект "Вжух"
-        g.gain.setValueAtTime(0.4, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.15);
-        src.connect(f); f.connect(g); g.connect(audioCtx.destination); src.start();
-    } else if (type === 'loot') {
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(1000, audioCtx.currentTime); osc.frequency.setValueAtTime(1500, audioCtx.currentTime+0.1);
-        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.2);
-        osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.2);
+    const g = audioCtx.createGain();
+    g.connect(audioCtx.destination);
+
+    if(type === 'step' && footstepAudioBuffer) {
+        const src = audioCtx.createBufferSource();
+        src.buffer = footstepAudioBuffer;
+        // Случайная высота тона для реализма
+        src.playbackRate.value = 0.9 + Math.random() * 0.2;
+        g.gain.value = 0.6;
+        src.connect(g);
+        src.start(0);
+        src.stop(audioCtx.currentTime + 0.3); // Играем только кусочек
+    } 
+    else if (type === 'hit') { // Глухой удар
+        const osc = audioCtx.createOscillator();
+        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        g.gain.setValueAtTime(1, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.connect(g); osc.start();
+    }
+    else if (type === 'sword') { // Свист меча
+        const osc = audioCtx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+        osc.connect(g); osc.start();
+    }
+    else if (type === 'shot') { // Выстрел (пиу)
+        const osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+        g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.connect(g); osc.start();
+    }
+    else if (type === 'loot') { // Дзынь
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+        g.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.connect(g); osc.start();
     }
 }
 
@@ -145,7 +184,7 @@ function createTexture(type) {
     else if (type === 'side') { fillNoise('#6d4e34', 0.2); ctx.fillStyle='#5da34b'; ctx.fillRect(0,0,64,15); for(let i=0;i<16;i++) ctx.fillRect(i*4,15,4,Math.random()*6); }
     else if (type === 'wood') { ctx.fillStyle='#5c4033'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#4a332a'; for(let i=1;i<4;i++) ctx.fillRect(i*16,0,4,64); }
     else if (type === 'leaves') { fillNoise('#2d5a27', 0.1); ctx.fillStyle='#1e3c1a'; for(let i=0;i<30;i++) ctx.fillRect(Math.random()*60,Math.random()*60,6,6); }
-    else if (type === 'chest') { ctx.fillStyle='#7B5529'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#000'; ctx.fillRect(0,0,64,2); ctx.fillRect(0,62,64,2); ctx.fillRect(0,0,2,64); ctx.fillRect(62,0,2,64); ctx.fillStyle='#FFD700'; ctx.fillRect(26,20,12,18); }
+    else if (type === 'chest') { ctx.fillStyle='#6d4e34'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#000'; ctx.strokeRect(2,2,60,60); ctx.fillStyle='#FFD700'; ctx.fillRect(28,24,8,12); }
     else if (type === 'face') { fillNoise('#bcaea5', 0.05); ctx.fillStyle='#222'; ctx.fillRect(10, 24, 12, 12); ctx.fillRect(42, 24, 12, 12); ctx.fillStyle='#633'; ctx.fillRect(20, 48, 24, 8); }
 
     const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.NearestFilter; return tex;
@@ -174,14 +213,12 @@ function init() {
     const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(50, 100, 30); sun.castShadow = true;
     sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048;
     sun.shadow.camera.left = -100; sun.shadow.camera.right = 100; sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100; scene.add(sun);
-    const sunG = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 1), new THREE.MeshBasicMaterial({color: 0xffffee})); sunG.position.set(40, 80, -60); scene.add(sunG);
 
     createWorld(); setWeapon('gun'); spawnLoot(); loadQuestion();
     
     document.addEventListener('keydown', e => {
         if(e.key === '1') setWeapon('gun');
         if(e.key === '2' && inventory.includes('sword')) setWeapon('sword');
-        if(e.key === '3' && inventory.includes('pickaxe')) setWeapon('pickaxe');
         handleKeys(e.code, true);
     });
     document.addEventListener('keyup', e => handleKeys(e.code, false));
@@ -224,17 +261,16 @@ function createWorld() {
         }
     }
 
-    // ПТИЦЫ
+    // ПТИЦЫ (Черные V)
     for(let i=0; i<15; i++) {
         const bird = new THREE.Group();
-        const wingGeo = new THREE.BoxGeometry(0.8, 0.1, 0.3);
-        const wingL = new THREE.Mesh(wingGeo, new THREE.MeshBasicMaterial({color: 0x222}));
-        const wingR = new THREE.Mesh(wingGeo, new THREE.MeshBasicMaterial({color: 0x222}));
-        wingL.position.x = -0.4; wingL.rotation.z = 0.2;
-        wingR.position.x = 0.4; wingR.rotation.z = -0.2;
-        bird.add(wingL, wingR);
-        bird.position.set(Math.random()*100-50, 15 + Math.random()*10, Math.random()*100-50); // Пониже (15-25)
-        birds.push({m: bird, spd: 3 + Math.random()*2, off: Math.random()*10});
+        const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.1), new THREE.MeshBasicMaterial({color:0x000}));
+        const w2 = w1.clone();
+        w1.position.x = -0.25; w1.rotation.z = 0.3;
+        w2.position.x = 0.25; w2.rotation.z = -0.3;
+        bird.add(w1, w2);
+        bird.position.set(Math.random()*100-50, 15 + Math.random()*10, Math.random()*100-50);
+        birds.push({m: bird, spd: 3 + Math.random(), off: Math.random()*10});
         scene.add(bird);
     }
 }
@@ -248,35 +284,12 @@ function createTree(x, z) {
     group.add(trunk); group.position.set(x, 0, z); scene.add(group);
 }
 
-// --- ВОКСЕЛЬНАЯ КИРКА ---
-function createVoxelPickaxe() {
-    const group = new THREE.Group();
-    const matD = new THREE.MeshLambertMaterial({color: 0x00FFFF}); // Алмаз
-    const matW = new THREE.MeshLambertMaterial({color: 0x5c4033}); // Дерево
-    const geo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-
-    // Ручка (5 блоков)
-    for(let i=0; i<6; i++) { const b = new THREE.Mesh(geo, matW); b.position.set(0, -0.2 + i*0.1, 0); group.add(b); }
-    
-    // Голова (Изогнутая)
-    const headPos = [
-        [0, 0.4], [-0.1, 0.4], [0.1, 0.4], // Верх
-        [-0.2, 0.35], [0.2, 0.35], // Изгиб 1
-        [-0.2, 0.25], [0.2, 0.25], // Изгиб 2
-        [-0.2, 0.15], [0.2, 0.15]  // Острие
-    ];
-    headPos.forEach(p => { const b = new THREE.Mesh(geo, matD); b.position.set(p[0], p[1], 0); group.add(b); });
-    
-    return group;
-}
-
 function setWeapon(type) {
     currentWeaponType = type;
     weaponGroup.clear();
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
     if(type==='gun') document.getElementById('slot-0').classList.add('active');
     if(type==='sword') document.getElementById('slot-1').classList.add('active');
-    if(type==='pickaxe') document.getElementById('slot-2').classList.add('active');
 
     if (type === 'gun') {
         const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0x333}));
@@ -288,39 +301,30 @@ function setWeapon(type) {
         const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033})); handle.position.y = -0.1;
         weaponGroup.add(blade, guard, handle);
         weaponGroup.userData = { offset: new THREE.Vector3(0.5, -0.5, -0.8) };
-    } else if (type === 'pickaxe') {
-        const pickaxe = createVoxelPickaxe();
-        weaponGroup.add(pickaxe);
-        weaponGroup.userData = { offset: new THREE.Vector3(0.5, -0.4, -0.8) };
     }
 }
 
 function spawnLoot() {
     const chestGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8); const chestMat = new THREE.MeshLambertMaterial({map: textures.chest});
-    for(let i=0; i<5; i++) {
+    for(let i=0; i<8; i++) {
         const b = new THREE.Mesh(chestGeo, chestMat); b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40); b.userData = { type: 'chest' }; scene.add(b); bonuses.push(b);
     }
     const sword = new THREE.Group();
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.05), new THREE.MeshLambertMaterial({color: 0x88ccff})); const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
     blade.position.y=0.4; handle.position.y=-0.15; sword.add(blade, handle);
     sword.position.set(5, 0.5, 5); sword.rotation.z = Math.PI/2; sword.userData = { type: 'sword_item' }; scene.add(sword); items.push(sword);
-
-    const pick = createVoxelPickaxe();
-    pick.position.set(-5, 0.5, 5); pick.rotation.z = Math.PI/2; pick.userData = { type: 'pick_item' }; scene.add(pick); items.push(pick);
 }
 
 function createMob(text) {
     const mob = new THREE.Group();
     const matSkin = new THREE.MeshLambertMaterial({color: 0x5D995D}); const matClothes = new THREE.MeshLambertMaterial({color: 0x3C50C4});
     const headMats = [matSkin, matSkin, matSkin, matSkin, new THREE.MeshLambertMaterial({map: textures.face}), matSkin];
-
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 0.25), matClothes); body.position.y = 1.125;
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), headMats); head.position.y = 1.75;
     const armGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2); armGeo.translate(0, -0.3, 0);
     const armL = new THREE.Mesh(armGeo, matSkin); armL.position.set(-0.35, 1.5, 0); const armR = new THREE.Mesh(armGeo, matSkin); armR.position.set(0.35, 1.5, 0);
     const legGeo = new THREE.BoxGeometry(0.2, 0.75, 0.2); legGeo.translate(0, -0.375, 0);
     const legL = new THREE.Mesh(legGeo, matClothes); legL.position.set(-0.15, 0.75, 0); const legR = new THREE.Mesh(legGeo, matClothes); legR.position.set(0.15, 0.75, 0);
-    
     mob.add(body, head, armL, armR, legL, legR); mob.castShadow = true;
     const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 256; canvas.height = 64;
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64); ctx.font = 'bold 30px monospace'; ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
@@ -347,9 +351,9 @@ function attack() {
 
     if(currentWeaponType === 'gun') {
         if(flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); }
-        playSound('swing'); // Выстрел (пока используем общий звук)
+        playSound('shot');
     } else {
-        playSound('swing'); // Взмах
+        playSound('sword');
     }
 
     const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
@@ -361,7 +365,6 @@ function attack() {
         if(items.includes(root)) {
             playSound('loot'); scene.remove(root); items = items.filter(i => i !== root);
             if(root.userData.type === 'sword_item') { inventory.push('sword'); document.getElementById('slot-1').innerText = "🗡️"; }
-            if(root.userData.type === 'pick_item') { inventory.push('pickaxe'); document.getElementById('slot-2').innerText = "⛏️"; }
             return;
         }
 
@@ -384,14 +387,20 @@ function takeDamage() {
     if(isDead) return; const now = Date.now(); if (now - lastDamageTime < 1000) return; lastDamageTime = now;
     playSound('hit'); health--;
     const hearts = document.querySelectorAll('.heart'); if(hearts[health]) hearts[health].classList.add('lost');
+    
+    // Screen Shake Effect
+    const hud = document.getElementById('hud');
+    hud.classList.add('shake');
+    setTimeout(() => hud.classList.remove('shake'), 500);
+
     const overlay = document.getElementById('damage-overlay'); overlay.style.opacity = 0.6; setTimeout(()=>overlay.style.opacity=0, 300);
-    const dir = new THREE.Vector3(); camera.getWorldDirection(dir); camera.position.add(dir.multiplyScalar(-3));
+    const dir = new THREE.Vector3(); camera.getWorldDirection(dir); camera.position.add(dir.multiplyScalar(-4)); // Stronger Knockback
     if(health <= 0) { isDead = true; document.getElementById('game-over').style.display = 'flex'; document.exitPointerLock(); }
 }
 
 function spawnParticles(pos, color) {
-    for(let i=0; i<8; i++) {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,0.2), new THREE.MeshBasicMaterial({color: color}));
+    for(let i=0; i<10; i++) {
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,0.15), new THREE.MeshBasicMaterial({color: color}));
         p.position.copy(pos); scene.add(p); particles.push({m:p, v: new THREE.Vector3((Math.random()-.5)*0.5, Math.random()*0.5, (Math.random()-.5)*0.5)});
     }
 }
@@ -407,7 +416,8 @@ function animate() {
     if(move.left) vel.x = -10 * delta; else if(move.right) vel.x = 10 * delta; else vel.x = 0;
     camera.translateX(vel.x); camera.translateZ(vel.z); camera.position.y = 1.7; camera.position.x = Math.max(-95, Math.min(95, camera.position.x)); camera.position.z = Math.max(-95, Math.min(95, camera.position.z));
     
-    if ((vel.x !== 0 || vel.z !== 0) && now - stepTimer > 0.4) { playSound('step'); stepTimer = now; }
+    // Footsteps
+    if ((vel.x !== 0 || vel.z !== 0) && now - stepTimer > 0.45) { playSound('step'); stepTimer = now; }
 
     const offset = weaponGroup.userData.offset || new THREE.Vector3(0.5, -0.5, -0.8);
     const bob = (vel.x!==0 || vel.z!==0) ? Math.sin(now*12)*0.03 : 0;
@@ -427,7 +437,7 @@ function animate() {
         const mob = t.obj; const dist = mob.position.distanceTo(camera.position);
         if(mob.userData.isAggro) {
             mob.lookAt(camera.position.x, 0, camera.position.z);
-            if(dist > 2.0) mob.translateZ(4 * delta); else takeDamage();
+            if(dist > 2.0) mob.translateZ(5 * delta); else takeDamage();
         } else {
             if(dist > 50) mob.lookAt(0,0,0); mob.translateZ(1.5 * delta); mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.01;
         }
@@ -439,12 +449,17 @@ function animate() {
         b.m.position.x += Math.cos(now * 0.5 + b.off) * (b.spd*0.05);
         b.m.position.z += Math.sin(now * 0.5 + b.off) * (b.spd*0.05);
         b.m.rotation.y = -now * 0.5 - b.off + Math.PI/2;
-        b.m.children[0].rotation.z = 0.2 + Math.sin(now*10)*0.5; // Машут
+        b.m.children[0].rotation.z = 0.2 + Math.sin(now*10)*0.5; 
         b.m.children[1].rotation.z = -0.2 - Math.sin(now*10)*0.5;
     });
 
     bonuses.forEach(b => b.rotation.y += 0.02); items.forEach(i => i.rotation.y += 0.02);
     for(let i=particles.length-1; i>=0; i--) { const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; p.m.rotation.x += 0.1; if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); } }
+    
+    // Day Night Cycle (Optional)
+    const time = now * 0.1;
+    scene.background.setHSL(0.6, 0.5, 0.5 + Math.sin(time)*0.2);
+
     renderer.render(scene, camera);
 }
 
