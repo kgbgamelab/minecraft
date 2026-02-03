@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocky Island Shooter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Courier New', monospace; }
+        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+        #question-ui {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9); border: 4px solid #333;
+            padding: 10px 30px; border-radius: 0px; color: #333; text-align: center;
+            box-shadow: 5px 5px 0px #000;
+        }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 30px; height: 30px;
+            border: 2px solid white; transform: translate(-50%, -50%);
+            mix-blend-mode: difference;
+        }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <div id="question-ui">
+        <div id="q-text" style="font-size: 1.2em; font-weight: bold;">ЗАГРУЗКА ОСТРОВА...</div>
+    </div>
+    <div id="crosshair"></div>
+</div>
+
+<script>
+let scene, camera, renderer, gun, currentQ = 0;
+let targets = [];
+let move = { fwd: false, bwd: false, left: false, right: false };
+const clock = new THREE.Clock();
+
+const config = {
+    questions: [
+        { q: "Как называется столица Франции?", a: ["Лондон", "Париж", "Берлин"], c: 1 },
+        { q: "2 + 2 * 2 = ?", a: ["8", "4", "6"], c: 2 }
+    ]
+};
+
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB); // Небо
+    
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.6, 10); // Рост человека
+
+    renderer = new THREE.WebGLRenderer({ antialias: false }); // Выключаем сглаживание для пиксельности
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Свет
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambient);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    sun.position.set(10, 20, 10);
+    scene.add(sun);
+
+    // Остров (Земля)
+    createIsland();
+
+    // Оружие
+    createBlockGun();
+
+    window.addEventListener('keydown', e => handleKeys(e.code, true));
+    window.addEventListener('keyup', e => handleKeys(e.code, false));
+    window.addEventListener('mousedown', shoot);
+    window.addEventListener('mousemove', onMouseMove);
+
+    loadQuestion();
+    animate();
+}
+
+function createIsland() {
+    // Трава
+    const groundGeo = new THREE.BoxGeometry(40, 1, 40);
+    const groundMat = new THREE.MeshLambertMaterial({color: 0x567d46});
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.position.y = -0.5;
+    scene.add(ground);
+
+    // Песок по краям
+    const sandGeo = new THREE.BoxGeometry(42, 0.8, 42);
+    const sandMat = new THREE.MeshLambertMaterial({color: 0xd2b48c});
+    const sand = new THREE.Mesh(sandGeo, sandMat);
+    sand.position.y = -0.6;
+    scene.add(sand);
+}
+
+function createBlockGun() {
+    gun = new THREE.Group();
+    const main = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.7), new THREE.MeshLambertMaterial({color: 0x333333}));
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.15), new THREE.MeshLambertMaterial({color: 0x555555}));
+    handle.position.set(0, -0.2, 0.2);
+    gun.add(main, handle);
+    scene.add(gun);
+}
+
+function createMob(text) {
+    const mob = new THREE.Group();
+    
+    // Тело (в стиле Майнкрафт)
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 0.6), new THREE.MeshLambertMaterial({color: 0x2e8b57}));
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshLambertMaterial({color: 0x2e8b57}));
+    head.position.y = 1.2;
+    
+    // Глаза
+    const eyeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.1);
+    const eyeMat = new THREE.MeshBasicMaterial({color: 0x000000});
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.2, 1.3, 0.4);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.2, 1.3, 0.4);
+    
+    mob.add(body, head, eyeL, eyeR);
+
+    // Текст над головой
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 512; canvas.height = 128;
+    ctx.fillStyle = 'white'; ctx.strokeStyle = 'black'; ctx.lineWidth = 4;
+    ctx.font = 'bold 60px Arial'; ctx.textAlign = 'center';
+    ctx.strokeText(text, 256, 80); ctx.fillText(text, 256, 80);
+    
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
+    sprite.scale.set(4, 1, 1); sprite.position.y = 2.2;
+    mob.add(sprite);
+
+    return mob;
+}
+
+function loadQuestion() {
+    targets.forEach(t => scene.remove(t.obj));
+    targets = [];
+    const qData = config.questions[currentQ];
+    document.getElementById('q-text').innerText = qData.q;
+
+    qData.a.forEach((ans, i) => {
+        const obj = createMob(ans);
+        // Случайная позиция на острове
+        obj.position.set((Math.random()-0.5)*30, 0, (Math.random()-0.5)*30);
+        scene.add(obj);
+        targets.push({ 
+            obj, 
+            isCorrect: i === qData.c, 
+            speed: 0.02 + Math.random()*0.03,
+            angle: Math.random() * Math.PI * 2 
+        });
+    });
+}
+
+function shoot() {
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+    const intersects = raycaster.intersectObjects(targets.map(t => t.obj), true);
+
+    // Эффект выстрела
+    gun.position.z += 0.2;
+
+    if(intersects.length > 0) {
+        let hit = intersects[0].object;
+        while(hit.parent && hit.type !== 'Group') hit = hit.parent;
+        const target = targets.find(t => t.obj === hit);
+
+        if(target.isCorrect) {
+            currentQ = (currentQ + 1) % config.questions.length;
+            loadQuestion();
+        } else {
+            // Моб "злится" (краснеет)
+            hit.children.forEach(c => { if(c.material) c.material.color?.set(0xff0000) });
+            setTimeout(() => {
+                hit.children.forEach(c => { if(c.material) c.material.color?.set(0x2e8b57) });
+            }, 500);
+        }
+    }
+}
+
+function handleKeys(code, isPressed) {
+    if(code === 'KeyW') move.fwd = isPressed;
+    if(code === 'KeyS') move.bwd = isPressed;
+    if(code === 'KeyA') move.left = isPressed;
+    if(code === 'KeyD') move.right = isPressed;
+}
+
+function onMouseMove(e) {
+    if (document.pointerLockElement) {
+        camera.rotation.y -= e.movementX * 0.002;
+        let newX = camera.rotation.x - e.movementY * 0.002;
+        camera.rotation.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, newX));
+    }
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+
+    // Движение игрока (с ограничением по острову)
+    const pSpeed = 5 * delta;
+    const oldPos = camera.position.clone();
+    if(move.fwd) camera.translateZ(-pSpeed);
+    if(move.bwd) camera.translateZ(pSpeed);
+    if(move.left) camera.translateX(-pSpeed);
+    if(move.right) camera.translateX(pSpeed);
+    camera.position.y = 1.6; // Держим уровень глаз
+    
+    // Границы острова
+    if(Math.abs(camera.position.x) > 19 || Math.abs(camera.position.z) > 19) {
+        camera.position.copy(oldPos);
+    }
+
+    // Привязка пушки
+    gun.position.copy(camera.position);
+    gun.quaternion.copy(camera.quaternion);
+    gun.translateX(0.3); gun.translateY(-0.3); gun.translateZ(-0.5);
+    gun.position.z = THREE.MathUtils.lerp(gun.position.z, gun.position.z, 0.1);
+
+    // Анимация мобов (они ходят)
+    targets.forEach(t => {
+        t.obj.position.x += Math.cos(t.angle) * t.speed;
+        t.obj.position.z += Math.sin(t.angle) * t.speed;
+        t.obj.lookAt(camera.position.x, 0, camera.position.z);
+        
+        // Чтобы не убегали с острова
+        if(Math.abs(t.obj.position.x) > 18 || Math.abs(t.obj.position.z) > 18) {
+            t.angle += Math.PI;
+        }
+    });
+
+    renderer.render(scene, camera);
+}
+
+document.body.addEventListener('click', () => document.body.requestPointerLock());
+init();
+</script>
+</body>
+</html>
