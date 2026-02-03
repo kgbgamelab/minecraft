@@ -2,12 +2,11 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft: True Survival v14 (Fixed Audio)</title>
+    <title>Minecraft: True Survival v15 (Physics Fix)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
-        
         #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
         
         .float-text {
@@ -34,7 +33,6 @@
             position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
             width: 600px; text-align: center;
         }
-        
         .hearts { display: flex; gap: 4px; justify-content: center; margin-bottom: 5px; }
         .heart {
             width: 32px; height: 32px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23ff0000" stroke="black" stroke-width="0.5" d="M2 1h2v1h2V1h2v2H7v1H6v1H5v1H4V5H3V4H2V2h2z"/></svg>');
@@ -61,16 +59,12 @@
         #q-text { font-size: 32px; color: #ffff55; text-shadow: 2px 2px 0 #333; }
 
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; }
-        #fire-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 40%; background: linear-gradient(transparent, rgba(255, 100, 0, 0.5)); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-        
         #game-over { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(50,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 999; }
     </style>
 </head>
 <body>
 
 <div id="damage-overlay"></div>
-<div id="fire-overlay"></div>
-
 <div id="hud">
     <div id="quest-box">
         <div style="color: #aaa; font-size: 18px; letter-spacing: 2px;">ТЕКУЩИЙ ВОПРОС</div>
@@ -116,64 +110,38 @@ let inventory = ['gun'];
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- АУДИО (ИСПРАВЛЕНО: ГРОМКИЕ ШАГИ + СТАРЫЕ ЭФФЕКТЫ) ---
+// --- АУДИО ---
+const FOOTSTEP_URL = 'https://raw.githack.com/kgbgamelab/minecraft/main/footsteps.wav';
+let footstepBuffer = null;
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load(FOOTSTEP_URL, (b) => { footstepBuffer = b; console.log("Шаги OK"); });
+
 function playSound(type) {
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const t = audioCtx.currentTime;
-    const g = audioCtx.createGain();
-    g.connect(audioCtx.destination);
+    const g = audioCtx.createGain(); g.connect(audioCtx.destination);
 
-    // 1. ШАГИ (СИНТЕЗ "ТРАВЫ" - ГРОМКО И ЧЕТКО)
-    if(type === 'step') {
-        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.08, audioCtx.sampleRate);
-        const d = buf.getChannelData(0);
-        // Белый шум
-        for(let i=0; i<d.length; i++) d[i] = (Math.random() * 2 - 1);
-        
-        const src = audioCtx.createBufferSource();
-        src.buffer = buf;
-        
-        // Фильтр высоких частот (Хруст)
-        const f = audioCtx.createBiquadFilter();
-        f.type = 'highpass';
-        f.frequency.value = 600; 
-
-        // ГРОМКОСТЬ ВЫШЕ (0.8)
-        g.gain.setValueAtTime(0.8, t);
-        g.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
-
-        src.connect(f); f.connect(g);
-        src.start(0);
+    if(type === 'step' && footstepBuffer) {
+        const src = audioCtx.createBufferSource(); src.buffer = footstepBuffer;
+        src.playbackRate.value = 0.9 + Math.random() * 0.2; g.gain.value = 0.8; // ГРОМКО
+        src.connect(g); src.start(0);
     } 
-    // 2. СТАРЫЕ ЗВУКИ ИЗ V6 (Синтезаторы)
     else {
-        const osc = audioCtx.createOscillator();
-        osc.connect(g);
-
-        if (type === 'shoot') { 
-            osc.type='square'; osc.frequency.setValueAtTime(800, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.1); osc.start(); osc.stop(t+0.1); 
-        } 
-        else if(type === 'sword') { // Свист меча (белый шум)
+        const osc = audioCtx.createOscillator(); osc.connect(g);
+        if(type === 'shoot') { osc.type='square'; osc.frequency.setValueAtTime(800, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.1); osc.start(); osc.stop(t+0.1); }
+        else if(type === 'sword') { 
             const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*0.15, audioCtx.sampleRate);
             const d = buf.getChannelData(0); for(let i=0; i<d.length; i++) d[i]=(Math.random()*2-1)*0.5;
             const src = audioCtx.createBufferSource(); src.buffer = buf;
             const f = audioCtx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=800; f.frequency.linearRampToValueAtTime(200, t+0.15);
             src.connect(f); f.connect(g); src.start();
         } 
-        else if(type === 'bow') { 
-            osc.type='triangle'; osc.frequency.setValueAtTime(600, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); 
-        } 
-        else if(type === 'hit') { 
-            osc.type='sawtooth'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); 
-        } 
-        else if(type === 'loot') { 
-            osc.type='sine'; osc.frequency.setValueAtTime(1200, t); g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.5); osc.start(); osc.stop(t+0.5); 
-        } 
-        else if(type === 'break') { 
-            osc.type='sawtooth'; osc.frequency.setValueAtTime(50, t); g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.4); osc.start(); osc.stop(t+0.4); 
-        }
-        else if(type === 'jump') { 
-            osc.frequency.setValueAtTime(150, t); osc.frequency.linearRampToValueAtTime(300, t+0.2); g.gain.linearRampToValueAtTime(0, t+0.2); osc.start(); osc.stop(t+0.2); 
+        else if(type === 'bow') { osc.type='triangle'; osc.frequency.setValueAtTime(600, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); }
+        else if(type === 'hit') { osc.type='sawtooth'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); }
+        else if(type === 'loot') { osc.type='sine'; osc.frequency.setValueAtTime(1200, t); g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.5); osc.start(); osc.stop(t+0.5); }
+        else if(type === 'break') { osc.type='sawtooth'; osc.frequency.setValueAtTime(50, t); g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.4); osc.start(); osc.stop(t+0.4); }
+        else if(type === 'step_synth') { // Резерв
+            osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.05); osc.start(); osc.stop(t+0.05);
         }
     }
 }
@@ -256,16 +224,35 @@ function createWorld() {
 function createHouse(x, y, z) {
     const grp = new THREE.Group();
     const wallMat = new THREE.MeshLambertMaterial({map: textures.wood}); const floorMat = new THREE.MeshLambertMaterial({map: textures.planks});
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(7, 0.2, 7), floorMat); floor.position.y = 0.1; grp.add(floor);
-    const w1 = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 0.5), wallMat); w1.position.set(0,2,-3.5); grp.add(w1);
-    const w2 = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 0.5), wallMat); w2.position.set(0,2,3.5); grp.add(w2);
-    const w3 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 7), wallMat); w3.position.set(-3.5,2,0); grp.add(w3);
-    const w4a = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 2.5), wallMat); w4a.position.set(3.5,2,-2.25); grp.add(w4a);
-    const w4b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 2.5), wallMat); w4b.position.set(3.5,2,2.25); grp.add(w4b);
+    
+    // Стены для коллизии
+    const wallThickness = 0.5;
+    const size = 7;
+    
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(size, 0.2, size), floorMat); floor.position.y = 0.1; grp.add(floor);
+    const w1 = new THREE.Mesh(new THREE.BoxGeometry(size, 4, wallThickness), wallMat); w1.position.set(0,2,-3.5); grp.add(w1); // Back
+    const w2 = new THREE.Mesh(new THREE.BoxGeometry(size, 4, wallThickness), wallMat); w2.position.set(0,2,3.5); grp.add(w2); // Front
+    const w3 = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, 4, size), wallMat); w3.position.set(-3.5,2,0); grp.add(w3); // Left
+    
+    // Дверная стена
+    const w4a = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, 4, 2.5), wallMat); w4a.position.set(3.5,2,-2.25); grp.add(w4a);
+    const w4b = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, 4, 2.5), wallMat); w4b.position.set(3.5,2,2.25); grp.add(w4b);
+    
     const bed = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 2.5), new THREE.MeshLambertMaterial({color: 0xcc0000})); bed.position.set(-2, 0.5, -2); grp.add(bed);
     const roof = new THREE.Mesh(new THREE.ConeGeometry(6, 3, 4), new THREE.MeshLambertMaterial({color: 0x5a3a22})); roof.position.y = 5.5; roof.rotation.y = Math.PI/4; grp.add(roof);
+    
     grp.position.set(x, y, z); scene.add(grp);
-    houses.push({ mesh: grp, pos: new THREE.Vector3(x, y, z), hp: 15 });
+    
+    // Данные для логики и коллизий
+    houses.push({ 
+        mesh: grp, 
+        pos: new THREE.Vector3(x, y, z), 
+        hp: 15,
+        bounds: { 
+            minX: x - 3.8, maxX: x + 3.8, 
+            minZ: z - 3.8, maxZ: z + 3.8 
+        }
+    });
 }
 
 function createTree(x, z) {
@@ -311,7 +298,6 @@ function createMob(text, type) {
     const isSkel = (type === 'skeleton');
     const skinColor = isSkel ? 0xdddddd : 0x5D995D;
     const texFace = isSkel ? textures.skel_face : textures.face;
-    
     const matSkin = new THREE.MeshLambertMaterial({color: skinColor}); 
     const matClothes = new THREE.MeshLambertMaterial({color: isSkel ? 0xcccccc : 0x3C50C4});
     const headMats = [matSkin, matSkin, matSkin, matSkin, new THREE.MeshLambertMaterial({map: texFace}), matSkin];
@@ -398,8 +384,9 @@ function attack() {
         const target = targets.find(t => t.obj === hit);
         if(target) {
             const dist = hit.position.distanceTo(camera.position); 
+            // УВЕЛИЧЕНА ДАЛЬНОСТЬ МЕЧА ДО 6
             if(currentWeaponType === 'gun' && dist > 40) return;
-            if(currentWeaponType === 'sword' && dist > 3) return;
+            if(currentWeaponType === 'sword' && dist > 6) return;
 
             const isHeadshot = (hits[0].object === target.obj.userData.parts.head);
             if(target.isCorrect) {
@@ -426,7 +413,10 @@ function shootArrow(fromPos, toPos) {
 
 function checkHouseProtection(pos) {
     for(let h of houses) {
-        if (h.hp > 0 && pos.x > h.pos.x - 3.5 && pos.x < h.pos.x + 3.5 && pos.z > h.pos.z - 3.5 && pos.z < h.pos.z + 3.5) return h;
+        // Проверяем, внутри ли мы (учитывая толщину стен)
+        if (h.hp > 0 && 
+            pos.x > h.bounds.minX + 0.5 && pos.x < h.bounds.maxX - 0.5 &&
+            pos.z > h.bounds.minZ + 0.5 && pos.z < h.bounds.maxZ - 0.5) return h;
     }
     return null;
 }
@@ -454,6 +444,7 @@ function spawnParticles(pos, color) { for(let i=0; i<10; i++) { const p = new TH
 function handleKeys(code, state) { if(code === 'KeyW') move.fwd = state; if(code === 'KeyS') move.bwd = state; if(code === 'KeyA') move.left = state; if(code === 'KeyD') move.right = state; }
 function onMouseMove(e) { if(document.pointerLockElement && !isDead) { yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002; pitch = Math.max(-1.5, Math.min(1.5, pitch)); camera.rotation.set(pitch, yaw, 0); } }
 
+// --- НОВАЯ СИСТЕМА КОЛЛИЗИЙ (ФИЗИКА СТЕН) ---
 function updatePhysics(delta) {
     player.speed = move.sprint ? 18 : 10;
     const direction = new THREE.Vector3();
@@ -467,19 +458,43 @@ function updatePhysics(delta) {
     if(player.onGround && move.jump) { player.vel.y = 12; player.onGround = false; playSound('jump'); }
     player.vel.y -= 30 * delta;
 
-    camera.position.x += direction.x + (player.vel.x * delta);
-    camera.position.z += direction.z + (player.vel.z * delta);
+    // ПРЕДСКАЗАНИЕ ПОЗИЦИИ
+    let nextX = camera.position.x + (direction.x + player.vel.x * delta);
+    let nextZ = camera.position.z + (direction.z + player.vel.z * delta);
+
+    // ПРОВЕРКА СТЕН ДОМА
+    let canMoveX = true, canMoveZ = true;
+    for(let h of houses) {
+        if(h.hp <= 0) continue;
+        // Если мы пытаемся войти в "бублик" стен (внешние границы - внутренние границы)
+        const inOuterX = (nextX > h.bounds.minX && nextX < h.bounds.maxX);
+        const inOuterZ = (camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ); // Check current Z for X move
+        const inInnerX = (nextX > h.bounds.minX + 0.5 && nextX < h.bounds.maxX - 0.5); // Thin walls
+        
+        // Упрощенная коллизия: не пускать в прямоугольник стен, кроме двери
+        // Дверь справа (x > center + 2)
+        const isDoor = (camera.position.x > h.pos.x + 2); 
+
+        if (nextX > h.bounds.minX && nextX < h.bounds.maxX && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) {
+             if (!isDoor) canMoveX = false; 
+        }
+        if (camera.position.x > h.bounds.minX && camera.position.x < h.bounds.maxX && nextZ > h.bounds.minZ && nextZ < h.bounds.maxZ) {
+             if (!isDoor) canMoveZ = false;
+        }
+    }
+
+    if(canMoveX) camera.position.x = nextX;
+    if(canMoveZ) camera.position.z = nextZ;
     camera.position.y += player.vel.y * delta;
 
     if(camera.position.y < 1.7) { camera.position.y = 1.7; player.vel.y = 0; player.onGround = true; }
     player.vel.x *= 0.9; player.vel.z *= 0.9; 
 
+    // UI дома
     const house = checkHouseProtection(camera.position);
     document.getElementById('house-status').style.display = house ? 'block' : 'none';
 
-    // РИТМИЧНЫЕ ШАГИ (Без наложения)
-    const stepInterval = move.sprint ? 300 : 500;
-    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > stepInterval) {
+    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > (move.sprint ? 300 : 500)) {
         playSound('step'); stepTimer = Date.now();
     }
 }
@@ -519,11 +534,13 @@ function animate() {
                     mob.userData.shotTimer += delta;
                     if(mob.userData.shotTimer > 2.0) { shootArrow(mob.position, camera.position); mob.userData.shotTimer = 0; }
                 } else {
-                    if(dist > 2.0) mob.translateZ(6 * delta); else takeDamage(false);
+                    if(dist > 2.5) mob.translateZ(6 * delta); else takeDamage(false); // Стоп в 2.5 блоках
                 }
             }
         } else {
-            if(dist > 50) mob.lookAt(0,0,0); mob.translateZ(1.5 * delta); mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.01;
+            // ОГРАНИЧЕНИЕ ПАТРУЛЯ
+            if(dist > 30) mob.lookAt(0,0,0); 
+            mob.translateZ(1.5 * delta); mob.rotation.y += Math.sin(now * 0.5 + t.angle) * 0.01;
         }
         
         const p = mob.userData.parts; const w = Math.sin(now * (mob.userData.isAggro ? 15 : 8));
