@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft: True Survival v13 (Stable)</title>
+    <title>Minecraft: True Survival v14 (Fixed Audio)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
@@ -116,34 +116,36 @@ let inventory = ['gun'];
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- АУДИО (ПОЛНОСТЬЮ СИНТЕЗИРОВАННОЕ) ---
+// --- АУДИО (ИСПРАВЛЕНО: ГРОМКИЕ ШАГИ + СТАРЫЕ ЭФФЕКТЫ) ---
 function playSound(type) {
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const t = audioCtx.currentTime;
     const g = audioCtx.createGain();
     g.connect(audioCtx.destination);
 
-    // 1. ШАГИ (СИНТЕЗАТОР - РАВНОМЕРНЫЙ)
+    // 1. ШАГИ (СИНТЕЗ "ТРАВЫ" - ГРОМКО И ЧЕТКО)
     if(type === 'step') {
-        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.08, audioCtx.sampleRate);
         const d = buf.getChannelData(0);
         // Белый шум
-        for(let i=0; i<d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
+        for(let i=0; i<d.length; i++) d[i] = (Math.random() * 2 - 1);
         
         const src = audioCtx.createBufferSource();
         src.buffer = buf;
         
-        // Фильтр (делает звук глухим, как по земле)
+        // Фильтр высоких частот (Хруст)
         const f = audioCtx.createBiquadFilter();
-        f.type = 'lowpass';
-        f.frequency.value = 400; 
+        f.type = 'highpass';
+        f.frequency.value = 600; 
 
-        g.gain.setValueAtTime(0.2, t);
-        g.gain.exponentialRampToValueAtTime(0.01, t + 0.1); // Короткое затухание
+        // ГРОМКОСТЬ ВЫШЕ (0.8)
+        g.gain.setValueAtTime(0.8, t);
+        g.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
 
         src.connect(f); f.connect(g);
         src.start(0);
     } 
+    // 2. СТАРЫЕ ЗВУКИ ИЗ V6 (Синтезаторы)
     else {
         const osc = audioCtx.createOscillator();
         osc.connect(g);
@@ -151,13 +153,11 @@ function playSound(type) {
         if (type === 'shoot') { 
             osc.type='square'; osc.frequency.setValueAtTime(800, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.1); osc.start(); osc.stop(t+0.1); 
         } 
-        else if(type === 'sword') { // Свист меча
-            // Для меча лучше использовать шум, как в шагах, но выше тоном
+        else if(type === 'sword') { // Свист меча (белый шум)
             const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*0.15, audioCtx.sampleRate);
             const d = buf.getChannelData(0); for(let i=0; i<d.length; i++) d[i]=(Math.random()*2-1)*0.5;
             const src = audioCtx.createBufferSource(); src.buffer = buf;
             const f = audioCtx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=800; f.frequency.linearRampToValueAtTime(200, t+0.15);
-            g.gain.setValueAtTime(0.4, t); g.gain.linearRampToValueAtTime(0, t+0.15);
             src.connect(f); f.connect(g); src.start();
         } 
         else if(type === 'bow') { 
@@ -477,7 +477,9 @@ function updatePhysics(delta) {
     const house = checkHouseProtection(camera.position);
     document.getElementById('house-status').style.display = house ? 'block' : 'none';
 
-    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > (move.sprint ? 300 : 500)) {
+    // РИТМИЧНЫЕ ШАГИ (Без наложения)
+    const stepInterval = move.sprint ? 300 : 500;
+    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > stepInterval) {
         playSound('step'); stepTimer = Date.now();
     }
 }
