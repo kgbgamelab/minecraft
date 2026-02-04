@@ -175,10 +175,16 @@ const textures = { grass: createTexture('grass_top'), side: createTexture('side'
 
 const config = {
     questions: [
-        { q: "Где спавнится Гаст?", a: ["Энд", "Ад", "Болото"], c: 1 },
-        { q: "Как крафтится меч?", a: ["2 палки 1 алмаз", "1 палка 2 алмаза", "3 алмаза"], c: 1 },
-        { q: "Зомби горят днем?", a: ["Да", "Нет", "Иногда"], c: 0 },
-        { q: "Кто живет в деревне?", a: ["Пиглины", "Жители", "Эндермены"], c: 1 }
+        { q: "Dipper needs advice. He should say...", a: ["I need advice.", "I need your advice.", "Advice me."], c: 1 },
+        { q: "You want to ask politely. You say...", a: ["Give me advice.", "Can I ask advice?", "Can I ask for your advice?"], c: 2 },
+        { q: "Complete: You ___ eat so much Smile Dip!", a: ["should", "shouldn't", "don't should"], c: 1 },
+        { q: "Complete: Why ___ you ask Grunkle Stan?", a: ["don't", "not", "aren't"], c: 0 },
+        { q: "Complete: How about ___ a party?", a: ["throw", "throwing", "to throw"], c: 1 },
+        { q: "Mabel says: 'In my ___ you should smile.'", a: ["opinion", "mind", "idea"], c: 0 },
+        { q: "Correct advice: You should ___ the journal.", a: ["read", "reading", "to read"], c: 0 },
+        { q: "To ask for an opinion: What ___ I do?", a: ["shall", "should", "do"], c: 1 },
+        { q: "Negative advice: In my opinion, you ___.", a: ["shouldn't", "not should", "no should"], c: 0 },
+        { q: "Suggesting: How about ___ for help?", a: ["ask", "asking", "to ask"], c: 1 }
     ]
 };
 
@@ -402,7 +408,7 @@ function shootArrow(fromPos, toPos) {
 function checkHouseProtection(pos) {
     for(let h of houses) {
         if (h.hp > 0 && 
-            pos.x > h.bounds.minX + 0.5 && pos.x < h.bounds.maxX - 0.5 &&
+            pos.x > h.bounds.minX + 0.5 && pos.x < h.bounds.maxX - 0.5 && 
             pos.z > h.bounds.minZ + 0.5 && pos.z < h.bounds.maxZ - 0.5) return h;
     }
     return null;
