@@ -287,7 +287,7 @@ function setWeapon(type) {
 
 function spawnLoot() {
     const chestGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8); const chestMat = new THREE.MeshLambertMaterial({map: textures.chest});
-    for(let i=0; i<8; i++) { const b = new THREE.Mesh(chestGeo, chestMat); b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40); b.userData = { type: 'chest' }; scene.add(b); bonuses.push(b); }
+    for(let i=0; i<8; i++) { const b = new THREE.Mesh(chestGeo, certificateMat); b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40); b.userData = { type: 'chest' }; scene.add(b); bonuses.push(b); }
     const sword = new THREE.Group();
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.05), new THREE.MeshLambertMaterial({color: 0x88ccff})); const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
     blade.position.y=0.4; handle.position.y=-0.15; sword.add(blade, handle);
@@ -312,19 +312,16 @@ function createMob(text, type) {
     const legR = new THREE.Mesh(legGeo, matSkin); legR.position.set(0.15, 0.75, 0);
     mob.add(body, head, armL, armR, legL, legR); mob.castShadow = true;
 
-    // --- УЛУЧШЕННЫЙ ТЕКСТ НАД МОБОМ ---
     const canvas = document.createElement('canvas'); 
     const ctx = canvas.getContext('2d'); 
     ctx.font = 'bold 36px VT323';
     const textWidth = ctx.measureText(text).width + 40;
     canvas.width = textWidth; canvas.height = 80;
     
-    // Подложка
     ctx.fillStyle = 'rgba(0,0,0,0.7)'; 
     ctx.fillRect(0, 0, canvas.width, 80);
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.strokeRect(2,2,canvas.width-4, 76);
     
-    // Текст
     ctx.font = 'bold 36px VT323'; ctx.fillStyle = '#ffff55'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
     ctx.fillText(text, canvas.width/2, 40);
     
@@ -367,9 +364,12 @@ function loadQuestion() {
     if(currentQ >= config.questions.length) { finishGame(); return; }
     targets.forEach(t => scene.remove(t.obj)); targets = [];
     const qData = config.questions[currentQ]; document.getElementById('q-text').innerText = qData.q;
+    
     qData.a.forEach((ans, i) => {
-        const type = (i === qData.c) ? 'zombie' : 'skeleton';
-        const mob = createMob(ans, type);
+        // ИСПРАВЛЕНО: Тип моба (зомби или скелет) теперь выбирается случайно
+        const randomType = Math.random() > 0.5 ? 'zombie' : 'skeleton';
+        const mob = createMob(ans, randomType);
+        
         const angle = (i * (Math.PI*2/3)) + (Math.random()*0.5); 
         const radius = 22;
         mob.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
