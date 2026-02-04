@@ -287,7 +287,7 @@ function setWeapon(type) {
 
 function spawnLoot() {
     const chestGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8); const chestMat = new THREE.MeshLambertMaterial({map: textures.chest});
-    for(let i=0; i<8; i++) { const b = new THREE.Mesh(chestGeo, certificateMat); b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40); b.userData = { type: 'chest' }; scene.add(b); bonuses.push(b); }
+    for(let i=0; i<8; i++) { const b = new THREE.Mesh(chestGeo, chestMat); b.position.set(Math.random()*80-40, 0.4, Math.random()*80-40); b.userData = { type: 'chest' }; scene.add(b); bonuses.push(b); }
     const sword = new THREE.Group();
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.05), new THREE.MeshLambertMaterial({color: 0x88ccff})); const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.08), new THREE.MeshLambertMaterial({color: 0x5c4033}));
     blade.position.y=0.4; handle.position.y=-0.15; sword.add(blade, handle);
@@ -366,7 +366,7 @@ function loadQuestion() {
     const qData = config.questions[currentQ]; document.getElementById('q-text').innerText = qData.q;
     
     qData.a.forEach((ans, i) => {
-        // ИСПРАВЛЕНО: Тип моба (зомби или скелет) теперь выбирается случайно
+        // ИСПРАВЛЕНО: Тип моба теперь выбирается случайно
         const randomType = Math.random() > 0.5 ? 'zombie' : 'skeleton';
         const mob = createMob(ans, randomType);
         
