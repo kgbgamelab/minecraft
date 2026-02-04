@@ -368,7 +368,6 @@ function loadQuestion() {
     const qData = config.questions[currentQ]; document.getElementById('q-text').innerText = qData.q;
     
     qData.a.forEach((ans, i) => {
-        // ИСПРАВЛЕНО: Тип моба теперь выбирается случайно
         const randomType = Math.random() > 0.5 ? 'zombie' : 'skeleton';
         const mob = createMob(ans, randomType);
         
@@ -446,13 +445,11 @@ function checkHouseProtection(pos) {
 
 function takeDamage(isFire) {
     if(isDead || isWin) return; 
+    
+    // Прямой урон игроку игнорируется здесь, если мы в доме (обработка идет в animate для мобов)
     const house = checkHouseProtection(camera.position);
-    if(house) {
-        house.hp--; playSound('break'); spawnParticles(house.pos, 0x8b4513);
-        house.mesh.position.x += (Math.random()-0.5)*0.5; setTimeout(() => house.mesh.position.x = house.pos.x, 100);
-        if(house.hp <= 0) { scene.remove(house.mesh); spawnParticles(house.pos, 0xff0000); playSound('hit'); }
-        return;
-    }
+    if(house) return; 
+
     const now = Date.now(); if (now - lastDamageTime < 1000) return; lastDamageTime = now;
     playSound('hit'); health--;
     const hearts = document.querySelectorAll('.heart'); if(hearts[health]) hearts[health].classList.add('lost');
@@ -483,6 +480,12 @@ function updatePhysics(delta) {
     const wallT = 0.8; 
     for(let h of houses) {
         if(h.hp <= 0) continue;
+        if (nextX > h.bounds.minX - wallT && nextX < h.bounds.maxX + wallT && camera.position.z > h.bounds.minZ - wallT && camera.position.z < h.bounds.maxZ + wallT) {
+            // Если мы пытаемся зайти внутрь, проверяем только вход (положительная Z сторона дома обычно без стены или с дверью)
+            if (!(camera.position.z > h.pos.z + 2.5 && nextZ < h.pos.z + 3.5)) {
+                 // canMoveX = false; (Упрощенная коллизия для стабильности)
+            }
+        }
         if (nextX > h.bounds.minX - wallT && nextX < h.bounds.minX + wallT && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) canMoveX = false;
         if (nextX > h.bounds.maxX - wallT && nextX < h.bounds.maxX + wallT && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) {
             if (camera.position.z < h.pos.z - 1.0 || camera.position.z > h.pos.z + 1.0) canMoveX = false;
@@ -519,22 +522,53 @@ function animate() {
         }
     } else weaponGroup.rotateX(currentWeaponType !== 'gun' ? Math.PI/8 : 0);
 
+    const playerInHouse = checkHouseProtection(camera.position);
+
     targets.forEach(t => {
         const mob = t.obj; const dist = mob.position.distanceTo(camera.position);
         if(mob.userData.isAggro) {
             mob.lookAt(camera.position.x, 0, camera.position.z);
             mob.userData.aggroTimer -= delta;
+            
             if(mob.userData.aggroTimer <= 0) {
                 mob.userData.isAggro = false;
                 const isSkel = mob.userData.type === 'skeleton';
                 mob.userData.parts.body.material.color.set(isSkel ? 0xcccccc : 0x3C50C4);
             } else {
                 if(mob.userData.type === 'skeleton') {
-                    if(dist > 10) mob.translateZ(3 * delta);
+                    // Логика скелета: если игрок в доме, стреляем в дом
+                    if(dist > 12) mob.translateZ(3 * delta);
                     mob.userData.shotTimer += delta;
-                    if(mob.userData.shotTimer > 2.0) { shootArrow(mob.position, camera.position); mob.userData.shotTimer = 0; }
+                    if(mob.userData.shotTimer > 2.0) { 
+                        shootArrow(mob.position, camera.position); 
+                        mob.userData.shotTimer = 0; 
+                    }
                 } else {
-                    if(dist > 2.5) mob.translateZ(6 * delta); else takeDamage(false);
+                    // Логика зомби
+                    let canMoveTowardsPlayer = true;
+                    if (playerInHouse) {
+                        // Если игрок в доме, зомби не заходит внутрь (останавливается у границ)
+                        const mobInHouse = checkHouseProtection(mob.position);
+                        if (dist < 4.5 || mobInHouse) {
+                            canMoveTowardsPlayer = false;
+                            // Зомби атакует дом
+                            if (Math.random() < 0.05) { // Частота атак по дому
+                                playerInHouse.hp -= 0.5; // Снимаем прочность
+                                playSound('break');
+                                spawnParticles(playerInHouse.pos, 0x8b4513);
+                                if (playerInHouse.hp <= 0) {
+                                    scene.remove(playerInHouse.mesh);
+                                    playSound('hit');
+                                }
+                            }
+                        }
+                    }
+
+                    if(dist > 2.5 && canMoveTowardsPlayer) {
+                        mob.translateZ(6 * delta);
+                    } else if (dist <= 2.5 && !playerInHouse) {
+                        takeDamage(false); // Атака игрока только если он НЕ в доме
+                    }
                 }
             }
         } else {
@@ -547,8 +581,21 @@ function animate() {
 
     for(let i=projectiles.length-1; i>=0; i--) {
         const arr = projectiles[i]; arr.position.add(arr.userData.vel.clone().multiplyScalar(delta));
-        if(arr.position.distanceTo(camera.position) < 2.0) { takeDamage(true); scene.remove(arr); projectiles.splice(i,1); }
-        else if(arr.position.y < 0 || arr.position.distanceTo(camera.position) > 100) { scene.remove(arr); projectiles.splice(i,1); }
+        const projInHouse = checkHouseProtection(arr.position);
+        
+        if (projInHouse) {
+            // Если стрела попала в дом
+            projInHouse.hp -= 1;
+            playSound('break');
+            scene.remove(arr); projectiles.splice(i,1);
+            if (projInHouse.hp <= 0) scene.remove(projInHouse.mesh);
+        } else if(arr.position.distanceTo(camera.position) < 2.0) { 
+            // Попадание в игрока (если не в доме)
+            if (!playerInHouse) takeDamage(true); 
+            scene.remove(arr); projectiles.splice(i,1); 
+        } else if(arr.position.y < 0 || arr.position.distanceTo(camera.position) > 100) { 
+            scene.remove(arr); projectiles.splice(i,1); 
+        }
     }
     bonuses.forEach(b => b.rotation.y += 0.02); items.forEach(i => i.rotation.y += 0.02);
     for(let i=particles.length-1; i>=0; i--) { const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); } }
