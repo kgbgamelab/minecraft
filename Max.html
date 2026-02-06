@@ -25,6 +25,11 @@
         .crit { color: #ff3333; font-size: 60px; text-shadow: 4px 4px 0 #000; }
         @keyframes floatUp { to { transform: translateY(-120px) scale(1.2); opacity: 0; } }
 
+        #house-status {
+            position: absolute; top: 100px; width: 100%; text-align: center;
+            font-size: 30px; color: #55ff55; text-shadow: 2px 2px 0 #000; display: none;
+        }
+
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
             transform: translate(-50%, -50%); mix-blend-mode: difference;
@@ -109,17 +114,16 @@ let swingProgress = 0, isSwinging = false;
 let currentWeaponType = 'gun';
 let inventory = ['gun']; 
 
-const compliments = ["Great gamer!", "Smart and cool!", "Super creative!", "Best friend ever!", "Future legend!"];
+const compliments = ["You're genious!", "You are the best!", "May all your dreams come true!", "You're funny and creative!", "Cool gamer!"];
 let availableCompliments = [...compliments];
 
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- СЕРДЕЧКО (текстура) ---
-const heartCanvas = document.createElement('canvas'); heartCanvas.width = 32; heartCanvas.height = 32;
+const heartCanvas = document.createElement('canvas'); heartCanvas.width = 64; heartCanvas.height = 64;
 const hCtx = heartCanvas.getContext('2d');
-hCtx.fillStyle = 'red'; hCtx.font = '28px serif'; hCtx.textAlign = 'center'; hCtx.textBaseline = 'middle';
-hCtx.fillText('❤️', 16, 16);
+hCtx.font = '50px serif'; hCtx.textAlign = 'center'; hCtx.textBaseline = 'middle'; hCtx.fillText('❤️', 32, 32);
 const heartTexture = new THREE.CanvasTexture(heartCanvas);
 
 // --- АУДИО ---
@@ -382,7 +386,9 @@ function createMob(text, type) {
 
     mob.add(body, head, armL, armR, legL, legR, hat);
     // REMOVED BOW AND ARROW LOGIC
-    mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false, aggroTimer: 0, type: type || 'zombie', shotTimer: 0 };
+    mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false, aggroTimer: 0, type: type || 'zombie', shotTimer: 0, 
+    // ADDED WALKING LOGIC
+    walkTimer: Math.random() * 2, walkDir: new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5).normalize() };
     return mob;
 }
 
@@ -545,27 +551,31 @@ function animate() {
     targets.forEach(t => {
         const mob = t.obj;
         const dist = mob.position.distanceTo(camera.position);
-        
-        // ВСЕГДА СМОТРЯТ НА ИГРОКА
-        mob.lookAt(camera.position.x, 0, camera.position.z);
 
-        // БЕГУТ ТОЛЬКО ЕСЛИ АГРЕССИВНЫ
         if(mob.userData.isAggro) {
+            // АГРЕССИЯ: БЕГУТ К ИГРОКУ
+            mob.lookAt(camera.position.x, 0, camera.position.z);
             if(dist > 2.0) {
-                mob.translateZ(6 * delta); // Бегут к игроку
+                mob.translateZ(6 * delta); 
             } else {
                 // ДОБЕЖАЛИ - "ЦЕЛУЮТ"
                 if(Math.random() < 0.03) { 
                     healPlayer();
-                    spawnParticles(mob.position, 0xff0000, true); // Сердечки
+                    spawnParticles(mob.position, 0xff0000, true); 
                 }
             }
         } else {
-            // ПРОСТО ГУЛЯЮТ
-            // (можно добавить рандомное брожение, но пока пусть стоят и смотрят)
+            // МИРНЫЕ: ГУЛЯЮТ
+            mob.userData.walkTimer -= delta;
+            if(mob.userData.walkTimer <= 0) {
+                mob.userData.walkTimer = Math.random() * 3 + 1;
+                mob.userData.walkDir = new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5).normalize();
+            }
+            mob.lookAt(mob.position.clone().add(mob.userData.walkDir));
+            mob.translateZ(1.5 * delta); // Медленная ходьба
         }
 
-        const p = mob.userData.parts; const w = Math.sin(now * (mob.userData.isAggro ? 15 : 2));
+        const p = mob.userData.parts; const w = Math.sin(now * (mob.userData.isAggro ? 15 : 5));
         if(mob.userData.type !== 'skeleton') { p.armL.rotation.x = w; p.armR.rotation.x = -w; }
         p.legL.rotation.x = -w; p.legR.rotation.x = w;
     });
