@@ -25,11 +25,6 @@
         .crit { color: #ff3333; font-size: 60px; text-shadow: 4px 4px 0 #000; }
         @keyframes floatUp { to { transform: translateY(-120px) scale(1.2); opacity: 0; } }
 
-        #house-status {
-            position: absolute; top: 100px; width: 100%; text-align: center;
-            font-size: 30px; color: #55ff55; text-shadow: 2px 2px 0 #000; display: none;
-        }
-
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
             transform: translate(-50%, -50%); mix-blend-mode: difference;
@@ -75,9 +70,8 @@
 <div id="hud">
     <div id="bday-card">
         <div id="card-text">Happy Birthday!</div>
-        <button class="close-btn" onclick="document.getElementById('bday-card').style.display='none'; document.body.requestPointerLock();">OK!</button>
+        <button class="close-btn" onclick="document.getElementById('bday-card').style.display='none'; document.body.requestPointerLock();">OK, THANKS!</button>
     </div>
-    <div id="house-status">🛡️ В УКРЫТИИ</div>
     <div id="crosshair"></div>
     <div id="bottom-ui">
         <div id="xp-info">
@@ -153,6 +147,7 @@ function playSound(type) {
         else if(type === 'loot') { osc.type='sine'; osc.frequency.setValueAtTime(1200, t); g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.5); osc.start(); osc.stop(t+0.5); }
         else if(type === 'break') { osc.type='sawtooth'; osc.frequency.setValueAtTime(50, t); g.gain.setValueAtTime(0.8, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.4); osc.start(); osc.stop(t+0.4); }
         else if(type === 'pop') { osc.type='sawtooth'; osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(10, t+0.1); g.gain.linearRampToValueAtTime(0, t+0.1); osc.start(); osc.stop(t+0.1); }
+        else if(type === 'heal') { osc.type='sine'; osc.frequency.setValueAtTime(400, t); osc.frequency.linearRampToValueAtTime(800, t+0.3); g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t+0.3); osc.start(); osc.stop(t+0.3); }
     }
 }
 
@@ -214,7 +209,6 @@ function createSkyText() {
     const mat = new THREE.MeshLambertMaterial({color: 0xffffff});
     const geo = new THREE.BoxGeometry(1, 1, 1);
     
-    // Карта символов (5x5)
     const chars = {
         'H': [1,0,0,0,1, 1,0,0,0,1, 1,1,1,1,1, 1,0,0,0,1, 1,0,0,0,1],
         'A': [0,1,1,1,0, 1,0,0,0,1, 1,1,1,1,1, 1,0,0,0,1, 1,0,0,0,1],
@@ -229,7 +223,7 @@ function createSkyText() {
         'X': [1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1]
     };
 
-    let xOffset = -25; // Начальная позиция по X
+    let xOffset = -25;
     for(let i=0; i<msg.length; i++) {
         const char = msg[i];
         if(chars[char]) {
@@ -238,15 +232,14 @@ function createSkyText() {
                 for(let x=0; x<5; x++) {
                     if(map[y*5 + x]) {
                         const cube = new THREE.Mesh(geo, mat);
-                        // Инвертируем Y, чтобы буква не была перевернутой
                         cube.position.set(xOffset + x, 40 - y, -40);
                         scene.add(cube);
                     }
                 }
             }
-            xOffset += 6; // Отступ между буквами
+            xOffset += 6;
         } else {
-            xOffset += 3; // Пробел
+            xOffset += 3;
         }
     }
 }
@@ -266,7 +259,7 @@ function createWorld() {
     }
     
     // Спавним мобов в колпаках
-    for(let i=0; i<10; i++) {
+    for(let i=0; i<15; i++) {
         const type = Math.random()>0.5?'zombie':'skeleton';
         const m = createMob(type, type);
         m.position.set(Math.random()*60-30, 0, Math.random()*60-30);
@@ -371,15 +364,7 @@ function createMob(text, type) {
     hat.position.y = 2.2;
 
     mob.add(body, head, armL, armR, legL, legR, hat);
-
-    if(isSkel) {
-        const bow = new THREE.Group();
-        const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.1), new THREE.MeshLambertMaterial({color: 0x5c4033}));
-        const b2 = b1.clone(); b2.position.set(0, 0.3, 0.15); b2.rotation.x = -0.5;
-        const b3 = b1.clone(); b3.position.set(0, -0.3, 0.15); b3.rotation.x = 0.5;
-        bow.add(b1, b2, b3); bow.position.set(0, -0.4, 0.2); armR.add(bow);
-        armL.rotation.x = -Math.PI/2; armR.rotation.x = -Math.PI/2;
-    }
+    // REMOVED BOW AND ARROW LOGIC
     mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false, aggroTimer: 0, type: type || 'zombie', shotTimer: 0 };
     return mob;
 }
@@ -393,6 +378,21 @@ function spawnFloatingText(x, y, z, text, color) {
     const cx = (vec.x * .5 + .5) * window.innerWidth; const cy = (-(vec.y * .5) + .5) * window.innerHeight;
     div.style.left = cx + 'px'; div.style.top = cy + 'px';
     setTimeout(() => div.remove(), 1000);
+}
+
+function healPlayer() {
+    if(health < 5) {
+        health++;
+        const hearts = document.querySelectorAll('.heart');
+        // Найти последнее потерянное сердце и восстановить
+        for(let i=0; i<hearts.length; i++) {
+            if(hearts[i].classList.contains('lost')) {
+                hearts[i].classList.remove('lost');
+                break;
+            }
+        }
+        playSound('heal');
+    }
 }
 
 function attack() {
@@ -428,19 +428,7 @@ function attack() {
 
         if(bonuses.includes(root)) { playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root); score += 200; updateUI(); spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00"); spawnParticles(root.position, 0xffff00); return; }
         if(items.includes(root)) { playSound('loot'); scene.remove(root); items = items.filter(i => i !== root); if(root.userData.type === 'sword_item') { inventory.push('sword'); document.getElementById('slot-1').innerText = "🗡️"; } return; }
-        while(hit.parent && hit.type !== 'Group') hit = hit.parent;
-        const target = targets.find(t => t.obj === hit);
-        if(target) {
-            const dist = hit.position.distanceTo(camera.position); 
-            if(currentWeaponType === 'gun' && dist > 40) return;
-            if(currentWeaponType === 'sword' && dist > 6) return;
-            const isHeadshot = (hits[0].object === target.obj.userData.parts.head);
-            let pts = 100 + (combo * 50);
-            if (isHeadshot) { pts *= 2; spawnFloatingText(hit.position.x, hit.position.y, hit.position.z, "CRIT!", "#ff3333"); playSound('loot'); } 
-            else { spawnFloatingText(hit.position.x, hit.position.y, hit.position.z, "+"+pts+" XP", "#00ff00"); }
-            score += pts; combo++; updateUI(); spawnParticles(hit.position, 0x00ff00);
-            target.obj.userData.isAggro = true; target.obj.userData.aggroTimer = 10; target.obj.userData.parts.body.material.color.set(0xff0000);
-        }
+        // Removed damage logic for mobs
     }
 }
 
@@ -450,31 +438,11 @@ function updateUI() {
     document.getElementById('xp-fill').style.width = Math.min(100, (score % 1000) / 10) + '%';
 }
 
-function shootArrow(fromPos, toPos) {
-    const arrow = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1), new THREE.MeshBasicMaterial({color: 0xff4400}));
-    arrow.position.copy(fromPos); arrow.position.y += 1.5; arrow.lookAt(toPos);
-    arrow.userData = { vel: new THREE.Vector3().subVectors(toPos, arrow.position).normalize().multiplyScalar(20) };
-    scene.add(arrow); projectiles.push(arrow); playSound('bow');
-}
-
 function checkHouseProtection(pos) {
     for(let h of houses) {
         if (h.hp > 0 && pos.x > h.bounds.minX + 0.5 && pos.x < h.bounds.maxX - 0.5 && pos.z > h.bounds.minZ + 0.5 && pos.z < h.bounds.maxZ - 0.5) return h;
     }
     return null;
-}
-
-function takeDamage(isFire) {
-    if(isDead) return; 
-    const house = checkHouseProtection(camera.position); if(house) return; 
-    const now = Date.now(); if (now - lastDamageTime < 1000) return; lastDamageTime = now;
-    playSound('hit'); health--;
-    const hearts = document.querySelectorAll('.heart'); if(hearts[health]) hearts[health].classList.add('lost');
-    document.getElementById('hud').classList.add('shake'); setTimeout(()=>document.getElementById('hud').classList.remove('shake'), 500);
-    const ov = isFire ? document.getElementById('fire-overlay') : document.getElementById('damage-overlay');
-    ov.style.opacity = 0.6; setTimeout(()=>ov.style.opacity=0, 300);
-    const dir = new THREE.Vector3(); camera.getWorldDirection(dir); player.vel.add(dir.multiplyScalar(-15));
-    if(health <= 0) { isDead = true; document.getElementById('game-over').style.display = 'flex'; document.exitPointerLock(); }
 }
 
 function spawnParticles(pos, color) { for(let i=0; i<10; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,0.15), new THREE.MeshBasicMaterial({color: color})); p.position.copy(pos); scene.add(p); particles.push({m:p, v: new THREE.Vector3((Math.random()-.5)*0.5, Math.random()*0.5, (Math.random()-.5)*0.5)}); }}
@@ -536,80 +504,33 @@ function animate() {
         }
     } else weaponGroup.rotateX(currentWeaponType !== 'gun' ? Math.PI/8 : 0);
 
-    const playerInHouse = checkHouseProtection(camera.position);
-
     targets.forEach(t => {
         const mob = t.obj; const dist = mob.position.distanceTo(camera.position);
-        if(mob.userData.isAggro) {
-            mob.lookAt(camera.position.x, 0, camera.position.z);
-            mob.userData.aggroTimer -= delta;
-            
-            if(mob.userData.aggroTimer <= 0) {
-                mob.userData.isAggro = false;
-                const isSkel = mob.userData.type === 'skeleton';
-                mob.userData.parts.body.material.color.set(isSkel ? 0xcccccc : 0x3C50C4);
-            } else {
-                if(mob.userData.type === 'skeleton') {
-                    if(dist > 12) mob.translateZ(3 * delta);
-                    mob.userData.shotTimer += delta;
-                    if(mob.userData.shotTimer > 2.0) { 
-                        shootArrow(mob.position, camera.position); 
-                        mob.userData.shotTimer = 0; 
-                    }
-                } else {
-                    let canMoveTowardsPlayer = true;
-                    if (playerInHouse) {
-                        const mobInHouse = checkHouseProtection(mob.position);
-                        if (dist < 4.5 || mobInHouse) {
-                            canMoveTowardsPlayer = false;
-                            if (Math.random() < 0.05) { 
-                                playerInHouse.hp -= 0.5; 
-                                playSound('break');
-                                spawnParticles(playerInHouse.pos, 0x8b4513);
-                                if (playerInHouse.hp <= 0) {
-                                    scene.remove(playerInHouse.mesh);
-                                    playSound('hit');
-                                }
-                            }
-                        }
-                    }
-
-                    if(dist > 2.5 && canMoveTowardsPlayer) {
-                        mob.translateZ(6 * delta);
-                    } else if (dist <= 2.5 && !playerInHouse) {
-                        takeDamage(false); 
-                    }
-                }
-            }
+        
+        // ВСЕГДА БЕГУТ К ИГРОКУ
+        mob.lookAt(camera.position.x, 0, camera.position.z);
+        if(dist > 2.5) {
+            mob.translateZ(6 * delta); // Скорость бега
         } else {
-            if(dist > 30) mob.lookAt(0,0,0); mob.translateZ(1.5 * delta); mob.rotation.y += Math.sin(now * 0.5 + Math.random()) * 0.01;
+            // КОГДА ДОБЕЖАЛИ - "ЦЕЛУЮТ" (восстанавливают жизнь + сердечки)
+            if(Math.random() < 0.05) { // Шанс поцелуя
+                healPlayer();
+                spawnParticles(mob.position, 0xff0000); // Красные частицы
+            }
         }
-        const p = mob.userData.parts; const w = Math.sin(now * (mob.userData.isAggro ? 15 : 8));
+
+        const p = mob.userData.parts; const w = Math.sin(now * 15);
         if(mob.userData.type !== 'skeleton') { p.armL.rotation.x = w; p.armR.rotation.x = -w; }
         p.legL.rotation.x = -w; p.legR.rotation.x = w;
     });
 
-    for(let i=projectiles.length-1; i>=0; i--) {
-        const arr = projectiles[i]; arr.position.add(arr.userData.vel.clone().multiplyScalar(delta));
-        const projInHouse = checkHouseProtection(arr.position);
-        
-        if (projInHouse) {
-            projInHouse.hp -= 1;
-            playSound('break');
-            scene.remove(arr); projectiles.splice(i,1);
-            if (projInHouse.hp <= 0) scene.remove(projInHouse.mesh);
-        } else if(arr.position.distanceTo(camera.position) < 2.0) { 
-            if (!playerInHouse) takeDamage(true); 
-            scene.remove(arr); projectiles.splice(i,1); 
-        } else if(arr.position.y < 0 || arr.position.distanceTo(camera.position) > 100) { 
-            scene.remove(arr); projectiles.splice(i,1); 
-        }
-    }
+    // УБРАНЫ СТРЕЛЫ
+    
     bonuses.forEach(b => b.rotation.y += 0.02); items.forEach(i => i.rotation.y += 0.02);
     balloons.forEach(b => b.position.y += Math.sin(Date.now()*0.002)*0.01);
     cards.forEach(c => c.rotation.y += 0.01);
 
-    for(let i=particles.length-1; i>=0; i--) { const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); } }
+    for(let i=particles.length-1; i>=0; i--) { const p = particles[i]; p.m.position.add(p.v); p.v.y += 0.01; if(p.m.position.y > 10) { scene.remove(p.m); particles.splice(i,1); } }
     const time = now * 0.05; scene.background.setHSL(0.6, 0.5, 0.5 + Math.sin(time)*0.2);
     renderer.render(scene, camera);
 }
