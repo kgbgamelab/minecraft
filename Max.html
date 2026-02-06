@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Happy Birthday Max! - Minecraft Special Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
+        #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+        
+        #bday-card {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9); border: 8px solid #ff55ff; padding: 40px;
+            text-align: center; border-radius: 20px; box-shadow: 0 0 50px #fff;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { from { transform: translate(-50%, -50%) scale(0); } to { transform: translate(-50%, -50%) scale(1); } }
+        
+        #card-text { font-size: 50px; color: #ff00aa; text-shadow: 2px 2px 0 #000; }
+        #card-sub { font-size: 30px; color: #555; margin-top: 20px; }
+
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
+            transform: translate(-50%, -50%); mix-blend-mode: difference;
+        }
+        #crosshair::before { content: ''; position: absolute; top: 11px; left: 0; width: 24px; height: 2px; background: white; }
+        #crosshair::after { content: ''; position: absolute; top: 0; left: 11px; width: 2px; height: 24px; background: white; }
+
+        #bottom-ui {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            width: 600px; text-align: center;
+        }
+        #hotbar { display: flex; justify-content: center; gap: 4px; background: rgba(0,0,0,0.6); padding: 5px; border: 2px solid #fff; border-radius: 4px; }
+        .slot { width: 60px; height: 60px; background: #8b8b8b; border: 4px solid #373737; display: flex; align-items: center; justify-content: center; font-size: 30px; color: white; }
+        .slot.active { border-color: white; background: #a0a0a0; }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <div id="bday-card">
+        <div id="card-text">You are the best!</div>
+        <div id="card-sub">May all your dreams come true! 🎂✨</div>
+        <div style="margin-top:20px; font-size: 20px; color: #aaa;">Click to close</div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="bottom-ui">
+        <div id="hotbar">
+            <div class="slot active" id="slot-0">🔫</div>
+            <div class="slot" id="slot-1">🗡️</div>
+        </div>
+    </div>
+</div>
+
+<script>
+let scene, camera, renderer, weaponGroup, flash, giftBox, balloon;
+let score = 0, health = 5;
+let targets = [], particles = [], items = [], projectiles = [], houses = [];
+let move = { fwd: false, bwd: false, left: false, right: false, sprint: false, jump: false };
+let player = { vel: new THREE.Vector3(), onGround: false, height: 1.7 };
+let pitch = 0, yaw = 0, isCardOpen = false;
+let currentWeaponType = 'gun';
+const clock = new THREE.Clock();
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime;
+    const g = audioCtx.createGain(); g.connect(audioCtx.destination);
+    const osc = audioCtx.createOscillator(); osc.connect(g);
+    if(type === 'pop') { 
+        osc.type='sawtooth'; osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(10, t+0.1);
+        g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t+0.1);
+        osc.start(); osc.stop(t+0.1);
+    } else if(type === 'shoot') {
+        osc.type='square'; osc.frequency.setValueAtTime(800, t); g.gain.setValueAtTime(0.1, t); osc.start(); osc.stop(t+0.05);
+    }
+}
+
+function init() {
+    scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000); camera.rotation.order = 'YXZ';
+    renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(5, 10, 7); scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+    // Пол
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({color: 0x5da34b}));
+    floor.rotation.x = -Math.PI/2; scene.add(floor);
+
+    createGift();
+    createCloudText("Happy Birthday Max!", 0, 30, -50);
+    spawnGuests();
+    setupWeapons();
+
+    document.addEventListener('keydown', e => {
+        if(e.key === '1') setWeapon('gun'); if(e.key === '2') setWeapon('sword');
+        handleKeys(e.code, true);
+    });
+    document.addEventListener('keyup', e => handleKeys(e.code, false));
+    document.addEventListener('mousedown', () => { if(isCardOpen) { document.getElementById('bday-card').style.display='none'; isCardOpen=false; return; } attack(); });
+    document.addEventListener('mousemove', onMouseMove);
+    animate();
+}
+
+function createCloudText(text, x, y, z) {
+    const loader = new THREE.FontLoader();
+    // Используем упрощенные блоки вместо сложной подгрузки шрифта для стабильности
+    const group = new THREE.Group();
+    const words = text.split(' ');
+    words.forEach((word, wi) => {
+        for(let i=0; i<word.length; i++) {
+            const cloud = new THREE.Mesh(
+                new THREE.SphereGeometry(1.5, 8, 8),
+                new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.9})
+            );
+            cloud.position.set(x + (i*3) + (wi*10) - (text.length), y + Math.sin(i)*1, z);
+            group.add(cloud);
+        }
+    });
+    scene.add(group);
+}
+
+function createGift() {
+    balloon = new THREE.Group();
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshLambertMaterial({color: 0xff0000}));
+    const string = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3), new THREE.MeshLambertMaterial({color: 0xffffff}));
+    string.position.y = -2;
+    const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({color: 0xffff00}));
+    const ribbon = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.2, 1.1), new THREE.MeshLambertMaterial({color: 0xff0000}));
+    box.position.y = -3.5; ribbon.position.y = -3.5;
+    
+    balloon.add(sphere, string, box, ribbon);
+    balloon.position.set(0, 10, -15);
+    balloon.userData = { isGift: true };
+    scene.add(balloon);
+}
+
+function spawnGuests() {
+    for(let i=0; i<10; i++) {
+        const guest = createMob(Math.random() > 0.5 ? 'zombie' : 'skeleton');
+        guest.position.set(Math.random()*40-20, 0, Math.random()*40-20);
+        scene.add(guest);
+        targets.push(guest);
+    }
+}
+
+function createMob(type) {
+    const mob = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.4), new THREE.MeshLambertMaterial({color: type==='zombie'?0x2e7d32:0xbdc3c7}));
+    body.position.y = 0.75;
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshLambertMaterial({color: type==='zombie'?0x4caf50:0xecf0f1}));
+    head.position.y = 1.8;
+    
+    // ПРАЗДНИЧНЫЙ КОЛПАК
+    const hat = new THREE.Mesh(
+        new THREE.ConeGeometry(0.3, 0.7, 8),
+        new THREE.MeshLambertMaterial({color: Math.random() * 0xffffff})
+    );
+    hat.position.y = 2.3;
+    
+    mob.add(body, head, hat);
+    return mob;
+}
+
+function setupWeapons() {
+    weaponGroup = new THREE.Group();
+    scene.add(weaponGroup);
+    setWeapon('gun');
+}
+
+function setWeapon(type) {
+    currentWeaponType = type;
+    weaponGroup.clear();
+    document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
+    if(type==='gun') {
+        const g = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 1), new THREE.MeshLambertMaterial({color: 0x333}));
+        weaponGroup.add(g);
+        document.getElementById('slot-0').classList.add('active');
+    } else {
+        const s = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 0.2), new THREE.MeshLambertMaterial({color: 0x88ccff}));
+        weaponGroup.add(s);
+        document.getElementById('slot-1').classList.add('active');
+    }
+}
+
+function attack() {
+    playSound('shoot');
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(0,0), camera);
+    const intersects = ray.intersectObjects(scene.children, true);
+    
+    if(intersects.length > 0) {
+        let hit = intersects[0].object;
+        while(hit.parent && !hit.userData.isGift) hit = hit.parent;
+        
+        if(hit.userData.isGift) {
+            playSound('pop');
+            scene.remove(hit);
+            document.getElementById('bday-card').style.display = 'block';
+            isCardOpen = true;
+            spawnFirework(hit.position);
+        }
+    }
+}
+
+function spawnFirework(pos) {
+    for(let i=0; i<50; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({color: Math.random()*0xffffff}));
+        p.position.copy(pos);
+        const vel = new THREE.Vector3((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5);
+        particles.push({mesh: p, vel: vel, life: 1.0});
+        scene.add(p);
+    }
+}
+
+function handleKeys(code, state) {
+    if(code === 'KeyW') move.fwd = state; if(code === 'KeyS') move.bwd = state;
+    if(code === 'KeyA') move.left = state; if(code === 'KeyD') move.right = state;
+}
+
+function onMouseMove(e) {
+    if(document.pointerLockElement) {
+        yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
+        pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
+        camera.rotation.set(pitch, yaw, 0);
+    }
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    
+    // Движение
+    const dir = new THREE.Vector3();
+    if(move.fwd) dir.z -= 1; if(move.bwd) dir.z += 1;
+    if(move.left) dir.x -= 1; if(move.right) dir.x += 1;
+    dir.applyQuaternion(camera.quaternion);
+    dir.y = 0;
+    camera.position.add(dir.normalize().multiplyScalar(5 * delta));
+
+    // Оружие
+    weaponGroup.position.copy(camera.position);
+    weaponGroup.quaternion.copy(camera.quaternion);
+    weaponGroup.translateX(0.5); weaponGroup.translateY(-0.4); weaponGroup.translateZ(-1);
+
+    // Частицы фейерверка
+    for(let i=particles.length-1; i>=0; i--) {
+        const p = particles[i];
+        p.mesh.position.add(p.vel);
+        p.life -= delta;
+        if(p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); }
+    }
+
+    // Покачивание шарика
+    if(balloon) balloon.position.y += Math.sin(Date.now()*0.002)*0.01;
+
+    renderer.render(scene, camera);
+}
+
+document.body.addEventListener('click', () => {
+    if(!isCardOpen) document.body.requestPointerLock();
+});
+
+init();
+</script>
+</body>
+</html>
