@@ -25,11 +25,6 @@
         .crit { color: #ff3333; font-size: 60px; text-shadow: 4px 4px 0 #000; }
         @keyframes floatUp { to { transform: translateY(-120px) scale(1.2); opacity: 0; } }
 
-        #house-status {
-            position: absolute; top: 100px; width: 100%; text-align: center;
-            font-size: 30px; color: #55ff55; text-shadow: 2px 2px 0 #000; display: none;
-        }
-
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
             transform: translate(-50%, -50%); mix-blend-mode: difference;
@@ -119,6 +114,13 @@ let availableCompliments = [...compliments];
 
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// --- СЕРДЕЧКО (текстура) ---
+const heartCanvas = document.createElement('canvas'); heartCanvas.width = 32; heartCanvas.height = 32;
+const hCtx = heartCanvas.getContext('2d');
+hCtx.fillStyle = 'red'; hCtx.font = '28px serif'; hCtx.textAlign = 'center'; hCtx.textBaseline = 'middle';
+hCtx.fillText('❤️', 16, 16);
+const heartTexture = new THREE.CanvasTexture(heartCanvas);
 
 // --- АУДИО ---
 const FOOTSTEP_URL = 'https://raw.githack.com/kgbgamelab/minecraft/main/footsteps.wav';
@@ -217,6 +219,7 @@ function createSkyText() {
     const mat = new THREE.MeshLambertMaterial({color: 0xffffff});
     const geo = new THREE.BoxGeometry(1, 1, 1);
     
+    // Карта символов (5x5)
     const chars = {
         'H': [1,0,0,0,1, 1,0,0,0,1, 1,1,1,1,1, 1,0,0,0,1, 1,0,0,0,1],
         'A': [0,1,1,1,0, 1,0,0,0,1, 1,1,1,1,1, 1,0,0,0,1, 1,0,0,0,1],
@@ -231,7 +234,7 @@ function createSkyText() {
         'X': [1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1]
     };
 
-    let xOffset = -25;
+    let xOffset = -25; // Начальная позиция по X
     for(let i=0; i<msg.length; i++) {
         const char = msg[i];
         if(chars[char]) {
@@ -240,14 +243,15 @@ function createSkyText() {
                 for(let x=0; x<5; x++) {
                     if(map[y*5 + x]) {
                         const cube = new THREE.Mesh(geo, mat);
+                        // Инвертируем Y, чтобы буква не была перевернутой
                         cube.position.set(xOffset + x, 40 - y, -40);
                         scene.add(cube);
                     }
                 }
             }
-            xOffset += 6;
+            xOffset += 6; // Отступ между буквами
         } else {
-            xOffset += 3;
+            xOffset += 3; // Пробел
         }
     }
 }
@@ -377,6 +381,7 @@ function createMob(text, type) {
     hat.position.y = 2.2;
 
     mob.add(body, head, armL, armR, legL, legR, hat);
+    // REMOVED BOW AND ARROW LOGIC
     mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false, aggroTimer: 0, type: type || 'zombie', shotTimer: 0 };
     return mob;
 }
@@ -396,6 +401,7 @@ function healPlayer() {
     if(health < 5) {
         health++;
         const hearts = document.querySelectorAll('.heart');
+        // Найти последнее потерянное сердце и восстановить
         for(let i=0; i<hearts.length; i++) {
             if(hearts[i].classList.contains('lost')) {
                 hearts[i].classList.remove('lost');
@@ -466,9 +472,9 @@ function spawnParticles(pos, color, isHeart = false) {
     for(let i=0; i<10; i++) { 
         let p;
         if(isHeart) {
-            // Heart shape approximation
-            p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), new THREE.MeshBasicMaterial({color: 0xff0000}));
-            p.rotation.z = Math.PI/4;
+            const heart = new THREE.Sprite(new THREE.SpriteMaterial({map: heartTexture, color: 0xffffff}));
+            heart.scale.set(0.5, 0.5, 1);
+            p = heart;
         } else {
             p = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,0.15), new THREE.MeshBasicMaterial({color: color})); 
         }
