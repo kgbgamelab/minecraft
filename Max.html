@@ -142,26 +142,7 @@ function playSound(type) {
         src.playbackRate.value = 0.95 + Math.random() * 0.1; g.gain.value = 1.0; 
         src.connect(g); src.start(0);
         src.stop(t + 0.25);
-    } else if (type === 'music') {
-        // HAPPY BIRTHDAY TUNE
-        const notes = [261.63, 261.63, 293.66, 261.63, 349.23, 329.63, 
-                       261.63, 261.63, 293.66, 261.63, 392.00, 349.23];
-        const durations = [0.2, 0.2, 0.4, 0.4, 0.4, 0.8, 
-                           0.2, 0.2, 0.4, 0.4, 0.4, 0.8];
-        let now = t;
-        for(let i=0; i<notes.length; i++) {
-            const osc = audioCtx.createOscillator();
-            const noteG = audioCtx.createGain();
-            osc.connect(noteG); noteG.connect(audioCtx.destination);
-            osc.type = 'square';
-            osc.frequency.value = notes[i];
-            noteG.gain.setValueAtTime(0.1, now);
-            noteG.gain.exponentialRampToValueAtTime(0.001, now + durations[i]);
-            osc.start(now);
-            osc.stop(now + durations[i]);
-            now += durations[i];
-        }
-    }
+    } 
     else {
         const osc = audioCtx.createOscillator(); osc.connect(g);
         if(type === 'shoot') { 
@@ -452,11 +433,13 @@ function attack() {
         let hit = hits[0].object; let root = hit; while(root.parent && root.parent.type !== 'Scene') root = root.parent;
         
         if(balloons.includes(root)) {
-            playSound('pop'); playSound('music'); // Start music on balloon pop too
-            spawnFireworks(root.position);
+            playSound('pop');
+            spawnParticles(root.position, 0xffff00);
             scene.remove(root);
             balloons = balloons.filter(b => b!==root);
-            spawnCard(new THREE.Vector3(root.position.x, root.position.y, root.position.z));
+            spawnCard(new THREE.Vector3(root.position.x, 0, root.position.z));
+            spawnFireworks(root.position);
+            playSound('music');
             return;
         }
         
@@ -468,7 +451,7 @@ function attack() {
             return;
         }
 
-        if(bonuses.includes(root)) { playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root); score += 200; updateUI(); spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00"); return; }
+        if(bonuses.includes(root)) { playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root); score += 200; updateUI(); spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00"); spawnParticles(root.position, 0xffff00); return; }
         if(items.includes(root)) { playSound('loot'); scene.remove(root); items = items.filter(i => i !== root); if(root.userData.type === 'sword_item') { inventory.push('sword'); document.getElementById('slot-1').innerText = "🗡️"; } return; }
         
         // AGGRO LOGIC
