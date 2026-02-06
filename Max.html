@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Happy Birthday Max! - Minecraft Special Edition</title>
+    <title>Minecraft: Happy Birthday Max!</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <style>
@@ -11,14 +11,12 @@
         
         #bday-card {
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.9); border: 8px solid #ff55ff; padding: 40px;
-            text-align: center; border-radius: 20px; box-shadow: 0 0 50px #fff;
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(255, 255, 255, 0.95); border: 8px solid #ff55ff; padding: 40px;
+            text-align: center; border-radius: 20px; box-shadow: 0 0 50px #fff; pointer-events: auto; z-index: 1000;
         }
-        @keyframes popIn { from { transform: translate(-50%, -50%) scale(0); } to { transform: translate(-50%, -50%) scale(1); } }
-        
         #card-text { font-size: 50px; color: #ff00aa; text-shadow: 2px 2px 0 #000; }
         #card-sub { font-size: 30px; color: #555; margin-top: 20px; }
+        .close-btn { margin-top: 20px; padding: 10px 20px; font-family: 'VT323'; font-size: 24px; cursor: pointer; background: #ff55ff; color: white; border: none; }
 
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
@@ -42,7 +40,7 @@
     <div id="bday-card">
         <div id="card-text">You are the best!</div>
         <div id="card-sub">May all your dreams come true! 🎂✨</div>
-        <div style="margin-top:20px; font-size: 20px; color: #aaa;">Click to close</div>
+        <button class="close-btn" onclick="document.getElementById('bday-card').style.display='none'">CLOSE</button>
     </div>
     <div id="crosshair"></div>
     <div id="bottom-ui">
@@ -54,13 +52,10 @@
 </div>
 
 <script>
-let scene, camera, renderer, weaponGroup, flash, giftBox, balloon;
-let score = 0, health = 5;
-let targets = [], particles = [], items = [], projectiles = [], houses = [];
-let move = { fwd: false, bwd: false, left: false, right: false, sprint: false, jump: false };
-let player = { vel: new THREE.Vector3(), onGround: false, height: 1.7 };
-let pitch = 0, yaw = 0, isCardOpen = false;
-let currentWeaponType = 'gun';
+let scene, camera, renderer, weaponGroup, balloonGift;
+let move = { fwd: false, bwd: false, left: false, right: false, jump: false };
+let player = { vel: new THREE.Vector3(), onGround: false };
+let pitch = 0, yaw = 0, currentWeaponType = 'gun';
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -71,161 +66,148 @@ function playSound(type) {
     const osc = audioCtx.createOscillator(); osc.connect(g);
     if(type === 'pop') { 
         osc.type='sawtooth'; osc.frequency.setValueAtTime(400, t); osc.frequency.exponentialRampToValueAtTime(10, t+0.1);
-        g.gain.setValueAtTime(0.3, t); g.gain.linearRampToValueAtTime(0, t+0.1);
-        osc.start(); osc.stop(t+0.1);
-    } else if(type === 'shoot') {
+        g.gain.linearRampToValueAtTime(0, t+0.1); osc.start(); osc.stop(t+0.1);
+    } else {
         osc.type='square'; osc.frequency.setValueAtTime(800, t); g.gain.setValueAtTime(0.1, t); osc.start(); osc.stop(t+0.05);
     }
 }
 
+function createTexture(type) {
+    const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
+    const fillNoise = (c) => { ctx.fillStyle = c; ctx.fillRect(0,0,64,64); for(let i=0; i<400; i++) { ctx.fillStyle=`rgba(0,0,0,0.1)`; ctx.fillRect(Math.random()*64,Math.random()*64,4,4); }};
+    if(type === 'grass') fillNoise('#5da34b');
+    else if (type === 'wood') { ctx.fillStyle='#5c4033'; ctx.fillRect(0,0,64,64); for(let i=0;i<4;i++) { ctx.fillStyle='#4a332a'; ctx.fillRect(i*16,0,4,64); } }
+    const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.NearestFilter; return tex;
+}
+const textures = { grass: createTexture('grass'), wood: createTexture('wood') };
+
 function init() {
     scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB);
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000); camera.rotation.order = 'YXZ';
-    renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000); camera.rotation.order = 'YXZ';
+    renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(5, 10, 7); scene.add(light);
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(50, 100, 50); scene.add(sun);
 
-    // Пол
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({color: 0x5da34b}));
-    floor.rotation.x = -Math.PI/2; scene.add(floor);
+    // Мир
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshLambertMaterial({map: textures.grass}));
+    floor.rotation.x = -Math.PI/2; floor.material.map.repeat.set(50, 50); floor.material.map.wrapS = floor.material.map.wrapT = THREE.RepeatWrapping;
+    scene.add(floor);
+
+    for(let i=0; i<5; i++) createHouse(Math.random()*100-50, 0, Math.random()*100-50);
+    for(let i=0; i<50; i++) createTree(Math.random()*200-100, Math.random()*200-100);
 
     createGift();
-    createCloudText("Happy Birthday Max!", 0, 30, -50);
+    createCloudMessage();
     spawnGuests();
-    setupWeapons();
+    setupWeapon();
 
     document.addEventListener('keydown', e => {
         if(e.key === '1') setWeapon('gun'); if(e.key === '2') setWeapon('sword');
         handleKeys(e.code, true);
     });
     document.addEventListener('keyup', e => handleKeys(e.code, false));
-    document.addEventListener('mousedown', () => { if(isCardOpen) { document.getElementById('bday-card').style.display='none'; isCardOpen=false; return; } attack(); });
+    document.addEventListener('mousedown', attack);
     document.addEventListener('mousemove', onMouseMove);
     animate();
 }
 
-function createCloudText(text, x, y, z) {
-    const loader = new THREE.FontLoader();
-    // Используем упрощенные блоки вместо сложной подгрузки шрифта для стабильности
-    const group = new THREE.Group();
-    const words = text.split(' ');
-    words.forEach((word, wi) => {
-        for(let i=0; i<word.length; i++) {
-            const cloud = new THREE.Mesh(
-                new THREE.SphereGeometry(1.5, 8, 8),
-                new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.9})
-            );
-            cloud.position.set(x + (i*3) + (wi*10) - (text.length), y + Math.sin(i)*1, z);
-            group.add(cloud);
-        }
-    });
-    scene.add(group);
+function createHouse(x, y, z) {
+    const grp = new THREE.Group();
+    const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), new THREE.MeshLambertMaterial({map: textures.wood}));
+    walls.position.y = 2; grp.add(walls);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(5, 3, 4), new THREE.MeshLambertMaterial({color: 0x5a3a22}));
+    roof.position.y = 5.5; roof.rotation.y = Math.PI/4; grp.add(roof);
+    grp.position.set(x, y, z); scene.add(grp);
+}
+
+function createTree(x, z) {
+    const trunk = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 1), new THREE.MeshLambertMaterial({map: textures.wood}));
+    trunk.position.set(x, 2.5, z); scene.add(trunk);
+    const leaves = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 4), new THREE.MeshLambertMaterial({color: 0x2d5a27}));
+    leaves.position.set(x, 6, z); scene.add(leaves);
 }
 
 function createGift() {
-    balloon = new THREE.Group();
-    const sphere = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshLambertMaterial({color: 0xff0000}));
-    const string = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3), new THREE.MeshLambertMaterial({color: 0xffffff}));
-    string.position.y = -2;
+    balloonGift = new THREE.Group();
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 16), new THREE.MeshLambertMaterial({color: 0xff0000}));
     const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({color: 0xffff00}));
-    const ribbon = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.2, 1.1), new THREE.MeshLambertMaterial({color: 0xff0000}));
-    box.position.y = -3.5; ribbon.position.y = -3.5;
-    
-    balloon.add(sphere, string, box, ribbon);
-    balloon.position.set(0, 10, -15);
-    balloon.userData = { isGift: true };
-    scene.add(balloon);
+    box.position.y = -3;
+    balloonGift.add(sphere, box);
+    balloonGift.position.set(0, 8, -10);
+    balloonGift.userData = { isGift: true };
+    scene.add(balloonGift);
+}
+
+function createCloudMessage() {
+    const cloudMat = new THREE.MeshLambertMaterial({color: 0xffffff, transparent: true, opacity: 0.9});
+    const message = "HAPPY BIRTHDAY MAX";
+    message.split('').forEach((char, i) => {
+        if(char === ' ') return;
+        const cloud = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), cloudMat);
+        cloud.position.set(-35 + i*4, 40, -80);
+        scene.add(cloud);
+    });
 }
 
 function spawnGuests() {
-    for(let i=0; i<10; i++) {
-        const guest = createMob(Math.random() > 0.5 ? 'zombie' : 'skeleton');
-        guest.position.set(Math.random()*40-20, 0, Math.random()*40-20);
-        scene.add(guest);
-        targets.push(guest);
+    for(let i=0; i<15; i++) {
+        const mob = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.6, 0.4), new THREE.MeshLambertMaterial({color: 0x2e7d32}));
+        body.position.y = 0.8;
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshLambertMaterial({color: 0x4caf50}));
+        head.position.y = 1.9;
+        const hat = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 8), new THREE.MeshLambertMaterial({color: Math.random()*0xffffff}));
+        hat.position.y = 2.4;
+        mob.add(body, head, hat);
+        mob.position.set(Math.random()*100-50, 0, Math.random()*100-50);
+        scene.add(mob);
     }
 }
 
-function createMob(type) {
-    const mob = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.5, 0.4), new THREE.MeshLambertMaterial({color: type==='zombie'?0x2e7d32:0xbdc3c7}));
-    body.position.y = 0.75;
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshLambertMaterial({color: type==='zombie'?0x4caf50:0xecf0f1}));
-    head.position.y = 1.8;
-    
-    // ПРАЗДНИЧНЫЙ КОЛПАК
-    const hat = new THREE.Mesh(
-        new THREE.ConeGeometry(0.3, 0.7, 8),
-        new THREE.MeshLambertMaterial({color: Math.random() * 0xffffff})
-    );
-    hat.position.y = 2.3;
-    
-    mob.add(body, head, hat);
-    return mob;
-}
-
-function setupWeapons() {
-    weaponGroup = new THREE.Group();
-    scene.add(weaponGroup);
+function setupWeapon() {
+    weaponGroup = new THREE.Group(); scene.add(weaponGroup);
     setWeapon('gun');
 }
 
 function setWeapon(type) {
     currentWeaponType = type;
     weaponGroup.clear();
-    document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
-    if(type==='gun') {
-        const g = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 1), new THREE.MeshLambertMaterial({color: 0x333}));
-        weaponGroup.add(g);
-        document.getElementById('slot-0').classList.add('active');
-    } else {
-        const s = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 0.2), new THREE.MeshLambertMaterial({color: 0x88ccff}));
-        weaponGroup.add(s);
-        document.getElementById('slot-1').classList.add('active');
-    }
+    const mesh = type === 'gun' ? 
+        new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.8), new THREE.MeshLambertMaterial({color: 0x333})) :
+        new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 0.2), new THREE.MeshLambertMaterial({color: 0x88ccff}));
+    weaponGroup.add(mesh);
+    document.getElementById('slot-0').className = type === 'gun' ? 'slot active' : 'slot';
+    document.getElementById('slot-1').className = type === 'sword' ? 'slot active' : 'slot';
 }
 
 function attack() {
     playSound('shoot');
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2(0,0), camera);
-    const intersects = ray.intersectObjects(scene.children, true);
-    
-    if(intersects.length > 0) {
-        let hit = intersects[0].object;
-        while(hit.parent && !hit.userData.isGift) hit = hit.parent;
-        
-        if(hit.userData.isGift) {
-            playSound('pop');
-            scene.remove(hit);
+    const hits = ray.intersectObjects(scene.children, true);
+    if(hits.length > 0) {
+        let obj = hits[0].object;
+        while(obj.parent && !obj.userData.isGift) obj = obj.parent;
+        if(obj.userData && obj.userData.isGift) {
+            playSound('pop'); scene.remove(obj);
             document.getElementById('bday-card').style.display = 'block';
-            isCardOpen = true;
-            spawnFirework(hit.position);
+            document.exitPointerLock();
         }
-    }
-}
-
-function spawnFirework(pos) {
-    for(let i=0; i<50; i++) {
-        const p = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({color: Math.random()*0xffffff}));
-        p.position.copy(pos);
-        const vel = new THREE.Vector3((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5, (Math.random()-0.5)*0.5);
-        particles.push({mesh: p, vel: vel, life: 1.0});
-        scene.add(p);
     }
 }
 
 function handleKeys(code, state) {
     if(code === 'KeyW') move.fwd = state; if(code === 'KeyS') move.bwd = state;
     if(code === 'KeyA') move.left = state; if(code === 'KeyD') move.right = state;
+    if(code === 'Space') move.jump = state;
 }
 
 function onMouseMove(e) {
     if(document.pointerLockElement) {
         yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
-        pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
+        pitch = Math.max(-1.5, Math.min(1.5, pitch));
         camera.rotation.set(pitch, yaw, 0);
     }
 }
@@ -234,37 +216,25 @@ function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
     
-    // Движение
     const dir = new THREE.Vector3();
     if(move.fwd) dir.z -= 1; if(move.bwd) dir.z += 1;
     if(move.left) dir.x -= 1; if(move.right) dir.x += 1;
-    dir.applyQuaternion(camera.quaternion);
-    dir.y = 0;
-    camera.position.add(dir.normalize().multiplyScalar(5 * delta));
+    dir.applyQuaternion(camera.quaternion); dir.y = 0;
+    camera.position.add(dir.normalize().multiplyScalar(12 * delta));
+    if(camera.position.y < 1.7) camera.position.y = 1.7;
 
-    // Оружие
     weaponGroup.position.copy(camera.position);
     weaponGroup.quaternion.copy(camera.quaternion);
-    weaponGroup.translateX(0.5); weaponGroup.translateY(-0.4); weaponGroup.translateZ(-1);
+    weaponGroup.translateX(0.5); weaponGroup.translateY(-0.4); weaponGroup.translateZ(-0.8);
 
-    // Частицы фейерверка
-    for(let i=particles.length-1; i>=0; i--) {
-        const p = particles[i];
-        p.mesh.position.add(p.vel);
-        p.life -= delta;
-        if(p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); }
-    }
-
-    // Покачивание шарика
-    if(balloon) balloon.position.y += Math.sin(Date.now()*0.002)*0.01;
+    if(balloonGift) balloonGift.position.y += Math.sin(Date.now()*0.002)*0.01;
 
     renderer.render(scene, camera);
 }
 
-document.body.addEventListener('click', () => {
-    if(!isCardOpen) document.body.requestPointerLock();
+document.body.addEventListener('click', () => { 
+    if(document.getElementById('bday-card').style.display !== 'block') document.body.requestPointerLock(); 
 });
-
 init();
 </script>
 </body>
