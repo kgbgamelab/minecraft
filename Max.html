@@ -142,7 +142,26 @@ function playSound(type) {
         src.playbackRate.value = 0.95 + Math.random() * 0.1; g.gain.value = 1.0; 
         src.connect(g); src.start(0);
         src.stop(t + 0.25);
-    } 
+    } else if (type === 'music') {
+        // HAPPY BIRTHDAY TUNE
+        const notes = [261.63, 261.63, 293.66, 261.63, 349.23, 329.63, 
+                       261.63, 261.63, 293.66, 261.63, 392.00, 349.23];
+        const durations = [0.2, 0.2, 0.4, 0.4, 0.4, 0.8, 
+                           0.2, 0.2, 0.4, 0.4, 0.4, 0.8];
+        let now = t;
+        for(let i=0; i<notes.length; i++) {
+            const osc = audioCtx.createOscillator();
+            const noteG = audioCtx.createGain();
+            osc.connect(noteG); noteG.connect(audioCtx.destination);
+            osc.type = 'square';
+            osc.frequency.value = notes[i];
+            noteG.gain.setValueAtTime(0.1, now);
+            noteG.gain.exponentialRampToValueAtTime(0.001, now + durations[i]);
+            osc.start(now);
+            osc.stop(now + durations[i]);
+            now += durations[i];
+        }
+    }
     else {
         const osc = audioCtx.createOscillator(); osc.connect(g);
         if(type === 'shoot') { 
@@ -433,13 +452,11 @@ function attack() {
         let hit = hits[0].object; let root = hit; while(root.parent && root.parent.type !== 'Scene') root = root.parent;
         
         if(balloons.includes(root)) {
-            playSound('pop');
-            spawnParticles(root.position, 0xffff00);
+            playSound('pop'); playSound('music'); // Start music on balloon pop too
+            spawnFireworks(root.position);
             scene.remove(root);
             balloons = balloons.filter(b => b!==root);
-            spawnCard(new THREE.Vector3(root.position.x, 0, root.position.z));
-            spawnFireworks(root.position);
-            playSound('music');
+            spawnCard(new THREE.Vector3(root.position.x, root.position.y, root.position.z));
             return;
         }
         
@@ -455,10 +472,17 @@ function attack() {
         if(items.includes(root)) { playSound('loot'); scene.remove(root); items = items.filter(i => i !== root); if(root.userData.type === 'sword_item') { inventory.push('sword'); document.getElementById('slot-1').innerText = "🗡️"; } return; }
         
         // AGGRO LOGIC
-        const target = targets.find(t => t.obj === hit);
+        // We need to traverse up to find the group (the mob)
+        let mobGroup = hit;
+        while(mobGroup.parent && mobGroup.type !== 'Scene' && !targets.find(t => t.obj === mobGroup)) {
+             mobGroup = mobGroup.parent;
+        }
+
+        const target = targets.find(t => t.obj === mobGroup);
         if(target) {
             target.obj.userData.isAggro = true;
-            target.obj.userData.parts.body.material.color.set(0xff0000); 
+            target.obj.userData.aggroTimer = 10;
+            spawnParticles(target.obj.position, 0xff0000, true);
         }
     }
 }
@@ -565,6 +589,10 @@ function animate() {
 
         if(mob.userData.isAggro) {
             // АГРЕССИЯ: БЕГУТ К ИГРОКУ
+            mob.userData.aggroTimer -= delta;
+            if (mob.userData.aggroTimer <= 0) {
+                 mob.userData.isAggro = false; // Stop hugging
+            }
             mob.lookAt(camera.position.x, 0, camera.position.z);
             if(dist > 2.0) {
                 mob.translateZ(6 * delta); 
