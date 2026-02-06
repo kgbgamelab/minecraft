@@ -114,7 +114,9 @@ let swingProgress = 0, isSwinging = false;
 let currentWeaponType = 'gun';
 let inventory = ['gun']; 
 
-const compliments = ["You're genious!", "You are the best!", "May all your dreams come true!", "You're funny and creative!"];
+const compliments = ["Great gamer!", "Smart and cool!", "Super creative!", "Best friend ever!", "Future legend!"];
+let availableCompliments = [...compliments];
+
 const clock = new THREE.Clock();
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -215,7 +217,6 @@ function createSkyText() {
     const mat = new THREE.MeshLambertMaterial({color: 0xffffff});
     const geo = new THREE.BoxGeometry(1, 1, 1);
     
-    // Карта символов (5x5)
     const chars = {
         'H': [1,0,0,0,1, 1,0,0,0,1, 1,1,1,1,1, 1,0,0,0,1, 1,0,0,0,1],
         'A': [0,1,1,1,0, 1,0,0,0,1, 1,1,1,1,1, 1,0,0,0,1, 1,0,0,0,1],
@@ -230,7 +231,7 @@ function createSkyText() {
         'X': [1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1]
     };
 
-    let xOffset = -25; // Начальная позиция по X
+    let xOffset = -25;
     for(let i=0; i<msg.length; i++) {
         const char = msg[i];
         if(chars[char]) {
@@ -239,15 +240,14 @@ function createSkyText() {
                 for(let x=0; x<5; x++) {
                     if(map[y*5 + x]) {
                         const cube = new THREE.Mesh(geo, mat);
-                        // Инвертируем Y, чтобы буква не была перевернутой
                         cube.position.set(xOffset + x, 40 - y, -40);
                         scene.add(cube);
                     }
                 }
             }
-            xOffset += 6; // Отступ между буквами
+            xOffset += 6;
         } else {
-            xOffset += 3; // Пробел
+            xOffset += 3;
         }
     }
 }
@@ -318,7 +318,12 @@ function spawnBalloons() {
 function spawnCard(pos) {
     const card = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.5), new THREE.MeshLambertMaterial({color: 0xffffff}));
     card.position.copy(pos); card.position.y = 0.5;
-    const txt = compliments[Math.floor(Math.random()*compliments.length)];
+    
+    // Pick unique text
+    if(availableCompliments.length === 0) availableCompliments = [...compliments];
+    const index = Math.floor(Math.random() * availableCompliments.length);
+    const txt = availableCompliments.splice(index, 1)[0];
+    
     card.userData = { isCard: true, text: txt };
     scene.add(card);
     cards.push(card);
@@ -372,7 +377,6 @@ function createMob(text, type) {
     hat.position.y = 2.2;
 
     mob.add(body, head, armL, armR, legL, legR, hat);
-    // REMOVED BOW AND ARROW LOGIC
     mob.userData = { parts: {armL, armR, legL, legR, body, head}, isAggro: false, aggroTimer: 0, type: type || 'zombie', shotTimer: 0 };
     return mob;
 }
@@ -392,7 +396,6 @@ function healPlayer() {
     if(health < 5) {
         health++;
         const hearts = document.querySelectorAll('.heart');
-        // Найти последнее потерянное сердце и восстановить
         for(let i=0; i<hearts.length; i++) {
             if(hearts[i].classList.contains('lost')) {
                 hearts[i].classList.remove('lost');
@@ -436,7 +439,13 @@ function attack() {
 
         if(bonuses.includes(root)) { playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root); score += 200; updateUI(); spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00"); spawnParticles(root.position, 0xffff00); return; }
         if(items.includes(root)) { playSound('loot'); scene.remove(root); items = items.filter(i => i !== root); if(root.userData.type === 'sword_item') { inventory.push('sword'); document.getElementById('slot-1').innerText = "🗡️"; } return; }
-        // Removed damage logic for mobs
+        
+        // AGGRO LOGIC
+        const target = targets.find(t => t.obj === hit);
+        if(target) {
+            target.obj.userData.isAggro = true;
+            target.obj.userData.parts.body.material.color.set(0xff0000); 
+        }
     }
 }
 
@@ -453,7 +462,22 @@ function checkHouseProtection(pos) {
     return null;
 }
 
-function spawnParticles(pos, color) { for(let i=0; i<10; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,0.15), new THREE.MeshBasicMaterial({color: color})); p.position.copy(pos); scene.add(p); particles.push({m:p, v: new THREE.Vector3((Math.random()-.5)*0.5, Math.random()*0.5, (Math.random()-.5)*0.5)}); }}
+function spawnParticles(pos, color, isHeart = false) { 
+    for(let i=0; i<10; i++) { 
+        let p;
+        if(isHeart) {
+            // Heart shape approximation
+            p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.05), new THREE.MeshBasicMaterial({color: 0xff0000}));
+            p.rotation.z = Math.PI/4;
+        } else {
+            p = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,0.15), new THREE.MeshBasicMaterial({color: color})); 
+        }
+        p.position.copy(pos); 
+        scene.add(p); 
+        particles.push({m:p, v: new THREE.Vector3((Math.random()-.5)*0.5, Math.random()*0.5, (Math.random()-.5)*0.5)}); 
+    }
+}
+
 function handleKeys(code, state) { if(code === 'KeyW') move.fwd = state; if(code === 'KeyS') move.bwd = state; if(code === 'KeyA') move.left = state; if(code === 'KeyD') move.right = state; }
 function onMouseMove(e) { if(document.pointerLockElement && !isDead) { yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002; pitch = Math.max(-1.5, Math.min(1.5, pitch)); camera.rotation.set(pitch, yaw, 0); } }
 
@@ -513,27 +537,33 @@ function animate() {
     } else weaponGroup.rotateX(currentWeaponType !== 'gun' ? Math.PI/8 : 0);
 
     targets.forEach(t => {
-        const mob = t.obj; const dist = mob.position.distanceTo(camera.position);
+        const mob = t.obj;
+        const dist = mob.position.distanceTo(camera.position);
         
-        // ВСЕГДА БЕГУТ К ИГРОКУ
+        // ВСЕГДА СМОТРЯТ НА ИГРОКА
         mob.lookAt(camera.position.x, 0, camera.position.z);
-        if(dist > 2.5) {
-            mob.translateZ(6 * delta); // Скорость бега
-        } else {
-            // КОГДА ДОБЕЖАЛИ - "ЦЕЛУЮТ" (восстанавливают жизнь + сердечки)
-            if(Math.random() < 0.05) { // Шанс поцелуя
-                healPlayer();
-                spawnParticles(mob.position, 0xff0000); // Красные частицы
+
+        // БЕГУТ ТОЛЬКО ЕСЛИ АГРЕССИВНЫ
+        if(mob.userData.isAggro) {
+            if(dist > 2.0) {
+                mob.translateZ(6 * delta); // Бегут к игроку
+            } else {
+                // ДОБЕЖАЛИ - "ЦЕЛУЮТ"
+                if(Math.random() < 0.03) { 
+                    healPlayer();
+                    spawnParticles(mob.position, 0xff0000, true); // Сердечки
+                }
             }
+        } else {
+            // ПРОСТО ГУЛЯЮТ
+            // (можно добавить рандомное брожение, но пока пусть стоят и смотрят)
         }
 
-        const p = mob.userData.parts; const w = Math.sin(now * 15);
+        const p = mob.userData.parts; const w = Math.sin(now * (mob.userData.isAggro ? 15 : 2));
         if(mob.userData.type !== 'skeleton') { p.armL.rotation.x = w; p.armR.rotation.x = -w; }
         p.legL.rotation.x = -w; p.legR.rotation.x = w;
     });
 
-    // УБРАНЫ СТРЕЛЫ
-    
     bonuses.forEach(b => b.rotation.y += 0.02); items.forEach(i => i.rotation.y += 0.02);
     balloons.forEach(b => b.position.y += Math.sin(Date.now()*0.002)*0.01);
     cards.forEach(c => c.rotation.y += 0.01);
