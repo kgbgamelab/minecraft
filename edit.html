@@ -2,39 +2,64 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Editor (Fixed Blob)</title>
+    <title>Minecraft Genially Builder (Working Version)</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; background: #1a1a1a; color: #eee; font-family: 'Roboto', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { margin: 0; background: #121212; color: #eee; font-family: 'Roboto', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* HEADER */
         header { background: #000; padding: 15px 20px; border-bottom: 3px solid #55ff55; display: flex; justify-content: space-between; align-items: center; }
-        h1 { font-family: 'VT323'; color: #55ff55; margin: 0; font-size: 28px; }
+        h1 { font-family: 'VT323'; color: #55ff55; margin: 0; font-size: 28px; letter-spacing: 1px; }
+        
+        /* LAYOUT */
         .main { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 420px; background: #222; border-right: 1px solid #444; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .preview { flex: 1; background: #000; position: relative; }
+        .sidebar { width: 450px; background: #1e1e1e; border-right: 1px solid #333; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .preview { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
+        
+        /* IFRAME ПРЕДПРОСМОТРА */
         iframe#preview-frame { width: 100%; height: 100%; border: none; background: #87CEEB; }
-        input, select { width: 100%; background: #333; border: 1px solid #555; color: #fff; padding: 10px; margin-bottom: 5px; box-sizing: border-box; font-family: 'VT323'; font-size: 18px; }
-        .q-card { background: #2d2d2d; padding: 15px; border: 1px solid #444; border-radius: 6px; position: relative; margin-bottom: 10px; }
-        .btn-del { position: absolute; top: 10px; right: 10px; background: #ff4444; border: none; color: white; cursor: pointer; }
-        .btn { background: #55ff55; color: #000; border: none; padding: 12px; font-family: 'VT323'; font-size: 20px; cursor: pointer; width: 100%; font-weight: bold; }
+
+        /* ЭЛЕМЕНТЫ УПРАВЛЕНИЯ */
+        label { color: #aaa; font-size: 12px; margin-bottom: 5px; display: block; font-weight: bold; }
+        input, select { width: 100%; background: #2d2d2d; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 4px; box-sizing: border-box; font-family: 'VT323'; font-size: 18px; margin-bottom: 5px; }
+        input:focus { border-color: #55ff55; outline: none; }
+        
+        .q-card { background: #252525; padding: 15px; border: 1px solid #444; border-radius: 6px; position: relative; margin-bottom: 10px; }
+        .btn-del { position: absolute; top: 10px; right: 10px; background: #d32f2f; color: white; border: none; cursor: pointer; padding: 2px 8px; font-family: 'VT323'; font-size: 16px; border-radius: 3px; }
+        .ans-row { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
+        .ans-row input[type="radio"] { width: auto; transform: scale(1.5); accent-color: #55ff55; cursor: pointer; }
+        
+        /* КНОПКИ */
+        .btn { background: #55ff55; color: #000; border: none; padding: 10px 25px; font-family: 'VT323'; font-size: 22px; cursor: pointer; font-weight: bold; border-radius: 4px; width: 100%; }
         .btn:hover { background: #44ee44; }
-        .btn-add { background: transparent; color: #87CEEB; border: 2px dashed #87CEEB; }
-        .btn-update { position: absolute; top: 20px; right: 20px; width: auto; z-index: 100; box-shadow: 0 4px 0 #004400; }
+        .btn-add { background: transparent; color: #87CEEB; border: 2px dashed #87CEEB; margin-top: 10px; }
+        .btn-update { position: absolute; top: 20px; right: 20px; width: auto; z-index: 100; box-shadow: 0 4px 0 #004400; font-size: 18px; }
+
+        /* МОДАЛЬНОЕ ОКНО */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; }
-        .code-box { width: 80%; height: 70%; background: #111; color: #55ff55; border: 2px solid #555; padding: 15px; font-family: monospace; resize: none; }
+        .code-box { width: 70%; height: 60%; background: #111; color: #55ff55; border: 2px solid #555; padding: 15px; font-family: monospace; resize: none; margin-bottom: 15px; font-size: 12px; }
+        
+        footer { background: #000; padding: 10px; text-align: center; font-family: 'VT323'; color: #666; border-top: 1px solid #333; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>MINECRAFT BUILDER (BLOB FIX)</h1>
+    <div style="display:flex; align-items:center; gap:15px;">
+        <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" height="40">
+        <div>
+            <h1>MINECRAFT GENIALLY BUILDER</h1>
+            <span style="font-size:12px; color:#888;">РАБОЧИЙ ШАБЛОН (SANDBOX + BLOB)</span>
+        </div>
+    </div>
     <button class="btn" style="width: auto;" onclick="generateGeniallyCode()">ПОЛУЧИТЬ КОД</button>
 </header>
 
 <div class="main">
     <div class="sidebar">
-        <label>Language</label>
+        <label>Язык интерфейса</label>
         <select id="lang">
             <option value="ru">Русский</option>
             <option value="en">English</option>
@@ -43,35 +68,38 @@
             <option value="fr">Français</option>
             <option value="zh">Chinese</option>
         </select>
+        
         <div id="q-list"></div>
         <button class="btn btn-add" onclick="addQuestion()">+ ДОБАВИТЬ ВОПРОС</button>
     </div>
+    
     <div class="preview">
-        <button class="btn btn-update" onclick="updatePreview()">🔄 ОБНОВИТЬ</button>
-        <iframe id="preview-frame"></iframe>
+        <button class="btn btn-update" onclick="updatePreview()">🔄 ОБНОВИТЬ ИГРУ</button>
+        <iframe id="preview-frame" sandbox="allow-scripts allow-pointer-lock allow-same-origin"></iframe>
     </div>
 </div>
 
 <div id="modal" class="modal">
-    <h2 style="color:white; font-family:VT323">КОПИРУЙТЕ ВЕСЬ КОД (Genially -> Insert -> Others)</h2>
+    <h2 style="color:white; font-family:VT323; font-size: 30px;">КОД ДЛЯ ВСТАВКИ (Insert -> Others)</h2>
+    <p style="color:#aaa; margin-bottom: 10px;">Этот код использует структуру, которая у вас заработала.</p>
     <textarea id="final-code" class="code-box" readonly onclick="this.select()"></textarea>
-    <button class="btn" style="width: 200px; margin-top:10px;" onclick="document.getElementById('modal').style.display='none'">ЗАКРЫТЬ</button>
+    <button class="btn" style="width: 200px;" onclick="document.getElementById('modal').style.display='none'">ЗАКРЫТЬ</button>
 </div>
 
-<textarea id="game-template" style="display:none;">
+<script id="game-template" type="text/template">
 <!DOCTYPE html>
-<html lang="__LANG__">
+<html lang="{{LANG}}">
 <head>
     <meta charset="UTF-8">
     <title>Minecraft: True Survival</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"><\/script>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
         #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
-        .float-text { position: absolute; color: #ffff55; font-size: 40px; font-weight: bold; text-shadow: 3px 3px 0 #000; pointer-events: none; animation: floatUp 1s forwards; white-space: nowrap; }
+        .float-text { position: absolute; color: #ffff55; font-size: 40px; font-weight: bold; text-shadow: 3px 3px 0 #000; pointer-events: none; animation: floatUp 1s forwards; white-space:nowrap; }
         .crit { color: #ff3333; font-size: 60px; text-shadow: 4px 4px 0 #000; }
         @keyframes floatUp { to { transform: translateY(-120px) scale(1.2); opacity: 0; } }
         #house-status { position: absolute; top: 100px; width: 100%; text-align: center; font-size: 30px; color: #55ff55; text-shadow: 2px 2px 0 #000; display: none; }
@@ -102,7 +130,7 @@
 <body>
 <div id="damage-overlay"></div><div id="fire-overlay"></div>
 <div id="hud">
-    <div id="quest-box"><div id="lbl-question" style="color: #aaa; font-size: 18px; letter-spacing: 2px;">Q</div><div id="q-text">...</div><img id="q-img" src=""></div>
+    <div id="quest-box"><div id="lbl-question" style="color: #aaa; font-size: 18px; letter-spacing: 2px;">Q</div><div id="q-text">Loading...</div><img id="q-img" src=""></div>
     <div id="house-status"></div><div id="crosshair"></div>
     <div id="bottom-ui">
         <div id="xp-info"><span>XP: <span id="lvl-num">0</span></span><span style="color: #ffd700">COMBO: x<span id="combo-num">0</span></span></div>
@@ -111,13 +139,14 @@
         <div id="hotbar"><div class="slot active" id="slot-0">🔫</div><div class="slot" id="slot-1"></div><div class="slot" id="slot-2"></div></div>
     </div>
 </div>
-<div id="game-over"><h1 id="lbl-died" style="font-size:100px;margin:0;text-shadow:5px 5px 0 #000;color:#ff5555">YOU DIED</h1><p class="btn-respawn" onclick="location.reload()">Respawn</p></div>
-<div id="win-screen"><h1 id="lbl-win" style="font-size:80px;margin:0;text-shadow:5px 5px 0 #000;color:#55ff55">QUEST COMPLETE!</h1><div id="win-stats" style="font-size:35px;text-align:center;margin:20px"></div><p class="btn-respawn" onclick="location.reload()">Play Again</p></div>
+<div id="game-over"><h1 id="lbl-died" style="font-size:100px;margin:0;text-shadow:5px 5px 0 #000;color:#ff5555">YOU DIED</h1><p class="btn-respawn" class="btn-respawn" onclick="location.reload()">Respawn</p></div>
+<div id="win-screen"><h1 id="lbl-win" style="font-size:80px;margin:0;text-shadow:5px 5px 0 #000;color:#55ff55">QUEST COMPLETE!</h1><div id="win-stats" style="font-size:35px;text-align:center;margin:20px"></div><p class="btn-respawn" class="btn-respawn" onclick="location.reload()">Play Again</p></div>
 
 <script>
-// --- CONFIGURATION ---
-const config = __CONFIG__;
+// --- КОНФИГУРАЦИЯ ---
+const config = {{CONFIG}};
 
+// --- ПЕРЕВОДЫ ---
 const tr = {
     ru: { q: "ТЕКУЩИЙ ВОПРОС", safe: "🛡️ В УКРЫТИИ", dead: "ПОТРАЧЕНО", win: "ПОБЕДА!", respawn: "Возродиться", again: "Играть снова", done: "Вы освоили материал!" },
     en: { q: "CURRENT QUESTION", safe: "🛡️ SAFE ZONE", dead: "YOU DIED", win: "QUEST COMPLETE!", respawn: "Respawn", again: "Play Again", done: "You mastered the topic!" },
@@ -131,8 +160,8 @@ document.getElementById('lbl-question').innerText = t.q;
 document.getElementById('house-status').innerText = t.safe;
 document.getElementById('lbl-died').innerText = t.dead;
 document.getElementById('lbl-win').innerText = t.win;
-document.getElementById('btn-respawn').innerText = t.respawn;
-document.getElementById('btn-playagain').innerText = t.again;
+const btns = document.getElementsByClassName('btn-respawn');
+for(let b of btns) b.innerText = t.respawn;
 
 // --- GAME LOGIC ---
 let scene, camera, renderer, weaponGroup, flash;
@@ -195,7 +224,8 @@ function init() {
     camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000); camera.rotation.order = 'YXZ';
     weaponGroup = new THREE.Group(); scene.add(weaponGroup);
     renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; document.body.appendChild(renderer.domElement);
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
     const ambient = new THREE.AmbientLight(0xffffff, 0.5); scene.add(ambient);
     const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(50, 100, 50); sun.castShadow = true;
     sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048; scene.add(sun);
@@ -266,7 +296,9 @@ function spawnLoot() {
 
 function renderText(el, text) {
     if(text.includes("$")) {
-        try { katex.render(text.replace(/\$/g, ""), el, {throwOnError:false}); } catch(e) { el.innerText = text; }
+        try {
+            katex.render(text.replace(/\\$/g, ""), el, {throwOnError:false});
+        } catch(e) { el.innerText = text; }
     } else { el.innerText = text; }
 }
 
@@ -326,26 +358,45 @@ function finishGame() {
     const winScreen = document.getElementById('win-screen');
     const stats = document.getElementById('win-stats');
     winScreen.style.display = 'flex';
+    
     let title = "Math Explorer";
     if(score > 1000) title = "Village Teacher";
     if(score > 3000) title = "University Professor";
     if(score > 5000) title = "Lord of Numbers";
     if(score > 8000) title = "Eternal Mathematician";
-    stats.innerHTML = `<div style="color: #ffff55">FINAL SCORE: ${score}</div><div style="color: #55ff55">TITLE: ${title}</div><div style="font-size: 20px; color: #aaa; margin-top: 10px">${t.done}</div>`;
+
+    stats.innerHTML = `<div style="color: #ffff55">FINAL SCORE: ${score}</div>
+        <div style="color: #55ff55">TITLE: ${title}</div>
+        <div style="font-size: 20px; color: #aaa; margin-top: 10px">${t.done}</div>`;
 }
 
 function loadQuestion() {
     if(currentQ >= config.questions.length) { finishGame(); return; }
-    targets.forEach(t => { scene.remove(t.obj); if(t.obj.userData.label) t.obj.userData.label.remove(); });
+    targets.forEach(t => {
+        scene.remove(t.obj);
+        if(t.obj.userData.label) t.obj.userData.label.remove();
+    });
     targets = [];
+    
     const qData = config.questions[currentQ];
+    
     const qEl = document.getElementById('q-text');
     const qImg = document.getElementById('q-img');
-    if(qData.q.startsWith('http')) { qEl.style.display = 'none'; qImg.src = qData.q; qImg.style.display = 'block'; }
-    else { qEl.style.display = 'block'; qImg.style.display = 'none'; renderText(qEl, qData.q); }
+    
+    if(qData.q.startsWith('http')) {
+        qEl.style.display = 'none';
+        qImg.src = qData.q;
+        qImg.style.display = 'block';
+    } else {
+        qEl.style.display = 'block';
+        qImg.style.display = 'none';
+        renderText(qEl, qData.q);
+    }
+    
     qData.a.forEach((ans, i) => {
         const randomType = Math.random() > 0.5 ? 'zombie' : 'skeleton';
         const mob = createMob(ans, randomType);
+        
         const angle = (i * (Math.PI*2/qData.a.length)) + (Math.random()*0.5); 
         const radius = 22;
         mob.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
@@ -367,9 +418,14 @@ function spawnFloatingText(x, y, z, text, color) {
 function attack() {
     if(isDead || isWin || isSwinging) return;
     isSwinging = true; swingProgress = 0;
-    if(currentWeaponType === 'gun') { playSound('shoot'); if(flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); } } else playSound('sword_hit'); 
+    if(currentWeaponType === 'gun') {
+        playSound('shoot'); 
+        if(flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); }
+    } else playSound('sword_hit'); 
+
     const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
     const hits = ray.intersectObjects(scene.children, true);
+
     if(hits.length > 0) {
         let hit = hits[0].object; let root = hit; while(root.parent && root.parent.type !== 'Scene') root = root.parent;
         if(bonuses.includes(root)) { playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root); score += 200; updateUI(); spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00"); spawnParticles(root.position, 0xffff00); return; }
@@ -407,13 +463,16 @@ function shootArrow(fromPos, toPos) {
 }
 
 function checkHouseProtection(pos) {
-    for(let h of houses) { if (h.hp > 0 && pos.x > h.bounds.minX + 0.5 && pos.x < h.bounds.maxX - 0.5 && pos.z > h.bounds.minZ + 0.5 && pos.z < h.bounds.maxZ - 0.5) return h; }
+    for(let h of houses) {
+        if (h.hp > 0 && pos.x > h.bounds.minX + 0.5 && pos.x < h.bounds.maxX - 0.5 && pos.z > h.bounds.minZ + 0.5 && pos.z < h.bounds.maxZ - 0.5) return h;
+    }
     return null;
 }
 
 function takeDamage(isFire) {
     if(isDead || isWin) return; 
-    const house = checkHouseProtection(camera.position); if(house) return; 
+    const house = checkHouseProtection(camera.position);
+    if(house) return; 
     const now = Date.now(); if (now - lastDamageTime < 1000) return; lastDamageTime = now;
     playSound('hit'); health--;
     const hearts = document.querySelectorAll('.heart'); if(hearts[health]) hearts[health].classList.add('lost');
@@ -445,7 +504,8 @@ function updatePhysics(delta) {
     for(let h of houses) {
         if(h.hp <= 0) continue;
         if (nextX > h.bounds.minX - wallT && nextX < h.bounds.maxX + wallT && camera.position.z > h.bounds.minZ - wallT && camera.position.z < h.bounds.maxZ + wallT) {
-            if (!(camera.position.z > h.pos.z + 2.5 && nextZ < h.pos.z + 3.5)) { }
+            if (!(camera.position.z > h.pos.z + 2.5 && nextZ < h.pos.z + 3.5)) {
+            }
         }
         if (nextX > h.bounds.minX - wallT && nextX < h.bounds.minX + wallT && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) canMoveX = false;
         if (nextX > h.bounds.maxX - wallT && nextX < h.bounds.maxX + wallT && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) {
@@ -462,7 +522,9 @@ function updatePhysics(delta) {
     const house = checkHouseProtection(camera.position);
     document.getElementById('house-status').style.display = house ? 'block' : 'none';
     const stepInterval = move.sprint ? 300 : 500;
-    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > stepInterval) { playSound('step'); stepTimer = Date.now(); }
+    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > stepInterval) {
+        playSound('step'); stepTimer = Date.now();
+    }
 }
 
 function animate() {
@@ -485,6 +547,7 @@ function animate() {
 
     targets.forEach(t => {
         const mob = t.obj; const dist = mob.position.distanceTo(camera.position);
+        
         if(mob.userData.label) {
             const pos = mob.position.clone().add(new THREE.Vector3(0, 2.5, 0));
             pos.project(camera);
@@ -494,9 +557,11 @@ function animate() {
             mob.userData.label.style.top = y + 'px';
             mob.userData.label.style.display = (pos.z < 1 && dist < 40) ? 'block' : 'none';
         }
+
         if(mob.userData.isAggro) {
             mob.lookAt(camera.position.x, 0, camera.position.z);
             mob.userData.aggroTimer -= delta;
+            
             if(mob.userData.aggroTimer <= 0) {
                 mob.userData.isAggro = false;
                 const isSkel = mob.userData.type === 'skeleton';
@@ -505,17 +570,33 @@ function animate() {
                 if(mob.userData.type === 'skeleton') {
                     if(dist > 12) mob.translateZ(3 * delta);
                     mob.userData.shotTimer += delta;
-                    if(mob.userData.shotTimer > 2.0) { shootArrow(mob.position, camera.position); mob.userData.shotTimer = 0; }
+                    if(mob.userData.shotTimer > 2.0) { 
+                        shootArrow(mob.position, camera.position); 
+                        mob.userData.shotTimer = 0; 
+                    }
                 } else {
                     let canMoveTowardsPlayer = true;
                     if (playerInHouse) {
                         const mobInHouse = checkHouseProtection(mob.position);
                         if (dist < 4.5 || mobInHouse) {
                             canMoveTowardsPlayer = false;
-                            if (Math.random() < 0.05) { playerInHouse.hp -= 0.5; playSound('break'); spawnParticles(playerInHouse.pos, 0x8b4513); if (playerInHouse.hp <= 0) { scene.remove(playerInHouse.mesh); playSound('hit'); } }
+                            if (Math.random() < 0.05) { 
+                                playerInHouse.hp -= 0.5; 
+                                playSound('break');
+                                spawnParticles(playerInHouse.pos, 0x8b4513);
+                                if (playerInHouse.hp <= 0) {
+                                    scene.remove(playerInHouse.mesh);
+                                    playSound('hit');
+                                }
+                            }
                         }
                     }
-                    if(dist > 2.5 && canMoveTowardsPlayer) { mob.translateZ(6 * delta); } else if (dist <= 2.5 && !playerInHouse) { takeDamage(false); }
+
+                    if(dist > 2.5 && canMoveTowardsPlayer) {
+                        mob.translateZ(6 * delta);
+                    } else if (dist <= 2.5 && !playerInHouse) {
+                        takeDamage(false); 
+                    }
                 }
             }
         } else {
@@ -529,9 +610,18 @@ function animate() {
     for(let i=projectiles.length-1; i>=0; i--) {
         const arr = projectiles[i]; arr.position.add(arr.userData.vel.clone().multiplyScalar(delta));
         const projInHouse = checkHouseProtection(arr.position);
-        if (projInHouse) { projInHouse.hp -= 1; playSound('break'); scene.remove(arr); projectiles.splice(i,1); if (projInHouse.hp <= 0) scene.remove(projInHouse.mesh); }
-        else if(arr.position.distanceTo(camera.position) < 2.0) { if (!playerInHouse) takeDamage(true); scene.remove(arr); projectiles.splice(i,1); }
-        else if(arr.position.y < 0 || arr.position.distanceTo(camera.position) > 100) { scene.remove(arr); projectiles.splice(i,1); }
+        
+        if (projInHouse) {
+            projInHouse.hp -= 1;
+            playSound('break');
+            scene.remove(arr); projectiles.splice(i,1);
+            if (projInHouse.hp <= 0) scene.remove(projInHouse.mesh);
+        } else if(arr.position.distanceTo(camera.position) < 2.0) { 
+            if (!playerInHouse) takeDamage(true); 
+            scene.remove(arr); projectiles.splice(i,1); 
+        } else if(arr.position.y < 0 || arr.position.distanceTo(camera.position) > 100) { 
+            scene.remove(arr); projectiles.splice(i,1); 
+        }
     }
     bonuses.forEach(b => b.rotation.y += 0.02); items.forEach(i => i.rotation.y += 0.02);
     for(let i=particles.length-1; i>=0; i--) { const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); } }
@@ -544,10 +634,10 @@ init();
 <\/script>
 </body>
 </html>
-</textarea>
+</script>
 
 <script>
-    // ДАННЫЕ РЕДАКТОРА
+    // --- ДАННЫЕ РЕДАКТОРА ---
     let questions = [{ q: "2 + 2 = $4$", a: ["$4$", "$5$", "$6$"], c: 0 }];
 
     function renderList() {
@@ -581,34 +671,37 @@ init();
         if(type === 'a') questions[i].a[idx] = val;
     }
 
-    // СБОРКА КОДА ИГРЫ
+    // --- СБОРКА ИГРЫ ---
     function buildGameString() {
         const lang = document.getElementById('lang').value;
         const configStr = JSON.stringify({ lang: lang, questions: questions });
-        // ЧИТАЕМ ИЗ TEXTAREA ЧТОБЫ СОХРАНИТЬ ВСЕ СИМВОЛЫ
-        let code = document.getElementById('game-template').value;
-        code = code.replace('LANG_PLACEHOLDER', lang);
+        // БЕРЕМ КОД ИЗ ШАБЛОНА (СКРЫТЫЙ SCRIPT TAG) - ЭТО ВАЖНО, ОН НЕ ИСПОЛНЯЕТСЯ БРАУЗЕРОМ
+        let code = document.getElementById('game-template').innerHTML;
+        code = code.replace('__LANG__', lang);
         code = code.replace('__CONFIG__', configStr);
         return code;
     }
 
-    // ОБНОВЛЕНИЕ ПРЕВЬЮ
+    // --- ПРЕДПРОСМОТР (ЧЕРЕЗ BLOB) ---
     function updatePreview() {
         const gameHtml = buildGameString();
+        // СОЗДАЕМ BLOB - ЭТО КЛЮЧЕВОЙ МОМЕНТ
         const blob = new Blob([gameHtml], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         document.getElementById('preview-frame').src = url;
     }
 
-    // ГЕНЕРАЦИЯ КОДА ДЛЯ GENIALLY
+    // --- ГЕНЕРАЦИЯ КОДА ДЛЯ GENIALLY (BLOB METHOD) ---
     function generateGeniallyCode() {
         let gameCode = buildGameString();
         
-        // Экранирование для вставки в шаблонную строку JS
-        gameCode = gameCode.replace(/\\/g, '\\\\')  // Слэши
-                           .replace(/`/g, '\\`')    // Обратные кавычки
-                           .replace(/\${/g, '\\${'); // Интерполяция
+        // ЭКРАНИРОВАНИЕ ДЛЯ ВСТАВКИ В JS СТРОКУ
+        // САМОЕ ВАЖНОЕ: Экранируем ${, \, ` чтобы Genially не сломался
+        gameCode = gameCode.replace(/\\/g, '\\\\')  // Экранируем слэши
+                           .replace(/`/g, '\\`')    // Экранируем обратные кавычки
+                           .replace(/\${/g, '\\${'); // Экранируем ${}
 
+        // Шаблон "Овечки" (ТОЧЬ-В-ТОЧЬ)
         const finalSnippet = `
 <iframe id="game-frame" style="width:100%; height:100vh; border:none;" allow="autoplay; pointer-lock"></iframe>
 <script>
@@ -623,6 +716,7 @@ document.getElementById('game-frame').src = url;
         document.getElementById('modal').style.display = 'flex';
     }
 
+    // Запуск
     renderList();
     updatePreview();
 </script>
