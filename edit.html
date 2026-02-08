@@ -446,10 +446,18 @@ function createMob(text, type) {
         mob.add(sprite);
     } else {
         // We use DOM overlay for text to support LaTeX perfectly
+       } else {
+        // We use DOM overlay for text to support LaTeX perfectly
         const d = document.createElement("div");
-        d.className = "float-text";
+        // ИСПРАВЛЕНИЕ: Убрали класс float-text и прописали стили напрямую
         d.style.position = "absolute";
+        d.style.color = "#ffff55";
+        d.style.fontSize = "40px";
+        d.style.fontWeight = "bold";
         d.style.textShadow = "2px 2px 0 #000";
+        d.style.pointerEvents = "none";
+        d.style.whiteSpace = "nowrap";
+        
         renderText(d, text);
         document.body.appendChild(d);
         mob.userData.label = d;
