@@ -2,54 +2,69 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Editor (Final Blob Version)</title>
+    <title>Minecraft Editor - Final Fix</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* СТИЛИ САМОГО РЕДАКТОРА */
         body { margin: 0; background: #121212; color: #eee; font-family: 'Roboto', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        header { background: #000; padding: 15px 20px; border-bottom: 2px solid #55ff55; display: flex; justify-content: space-between; align-items: center; }
-        h1 { font-family: 'VT323'; color: #55ff55; margin: 0; font-size: 28px; letter-spacing: 1px; }
-        .main { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 420px; background: #1e1e1e; border-right: 1px solid #333; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .preview { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
         
-        /* ОКНО ПРЕДПРОСМОТРА */
-        #preview-frame { width: 100%; height: 100%; border: none; background: #87CEEB; }
+        /* HEADER */
+        header { background: #000; padding: 15px 20px; border-bottom: 3px solid #55ff55; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .logo-img { height: 45px; }
+        h1 { font-family: 'VT323'; color: #55ff55; margin: 0; font-size: 28px; letter-spacing: 2px; text-shadow: 2px 2px 0 #004400; }
+        
+        /* LAYOUT */
+        .main { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 450px; background: #1e1e1e; border-right: 1px solid #333; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+        .preview { flex: 1; background: #000; padding: 0; position: relative; display: flex; flex-direction: column; }
+        
+        /* PREVIEW FRAME */
+        iframe#preview-frame { width: 100%; height: 100%; border: none; background: #87CEEB; }
 
-        /* ЭЛЕМЕНТЫ */
-        label { color: #aaa; font-size: 12px; margin-bottom: 5px; display: block; font-weight: bold; }
-        input, select { width: 100%; background: #2d2d2d; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 4px; box-sizing: border-box; font-family: 'VT323'; font-size: 18px; margin-bottom: 5px; }
-        .q-card { background: #252525; padding: 15px; border: 1px solid #444; border-radius: 6px; position: relative; margin-bottom: 10px; }
+        /* CONTROLS */
+        label { color: #aaa; font-size: 12px; margin-bottom: 5px; display: block; font-weight: bold; text-transform: uppercase; }
+        input, select { width: 100%; background: #2d2d2d; border: 1px solid #444; color: #fff; padding: 10px; margin-bottom: 5px; border-radius: 4px; box-sizing: border-box; font-family: 'VT323'; font-size: 18px; }
+        input:focus { border-color: #55ff55; outline: none; background: #333; }
+
+        /* CARDS */
+        .q-card { background: #252525; padding: 15px; border: 1px solid #444; border-radius: 6px; position: relative; margin-bottom: 10px; transition: border-color 0.2s; }
+        .q-card:hover { border-color: #666; }
         .btn-del { position: absolute; top: 10px; right: 10px; background: #d32f2f; color: white; border: none; cursor: pointer; padding: 2px 8px; border-radius: 3px; font-family: 'VT323'; font-size: 16px; }
         .ans-row { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
-        .btn { background: #55ff55; color: #000; border: none; padding: 10px 25px; font-family: 'VT323'; font-size: 22px; cursor: pointer; text-transform: uppercase; font-weight: bold; border-radius: 4px; width: 100%; }
-        .btn:hover { background: #44ee44; }
-        .btn-add { background: transparent; color: #87CEEB; border: 2px dashed #87CEEB; margin-top: 10px; }
-        .btn-update { position: absolute; top: 20px; right: 20px; width: auto; z-index: 100; box-shadow: 0 4px 0 #004400; font-size: 18px; }
+        .ans-row input[type="radio"] { width: auto; transform: scale(1.5); accent-color: #55ff55; cursor: pointer; }
 
-        /* МОДАЛЬНОЕ ОКНО */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; align-items: center; justify-content: center; flex-direction: column; }
-        .code-box { width: 70%; height: 60%; background: #111; color: #55ff55; border: 2px solid #555; padding: 15px; font-family: monospace; resize: none; margin-bottom: 15px; font-size: 12px; }
+        /* BUTTONS */
+        .btn { background: #55ff55; color: #000; border: none; padding: 10px 20px; font-family: 'VT323'; font-size: 22px; cursor: pointer; font-weight: bold; border-radius: 4px; width: 100%; text-transform: uppercase; transition: 0.2s; }
+        .btn:hover { background: #44ee44; box-shadow: 0 0 10px rgba(85, 255, 85, 0.4); }
+        .btn-add { background: transparent; color: #87CEEB; border: 2px dashed #87CEEB; margin-top: 10px; }
+        .btn-add:hover { background: rgba(135, 206, 235, 0.1); }
+        .btn-update { position: absolute; top: 20px; right: 20px; width: auto; z-index: 100; box-shadow: 0 4px 0 #004400; }
+
+        /* MODAL */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; }
+        .code-box { width: 70%; height: 60%; background: #111; color: #55ff55; border: 2px solid #555; padding: 20px; font-family: monospace; resize: none; margin-bottom: 20px; font-size: 12px; }
+        
+        footer { background: #000; padding: 10px; text-align: center; font-family: 'VT323'; color: #666; border-top: 1px solid #333; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="display:flex; align-items:center; gap:10px;">
-        <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" height="40">
-        <div>
-            <h1>MINECRAFT GENIALLY BUILDER</h1>
-            <span style="font-size:12px; color:#888;">FULL CODE RECOVERY • BLOB METHOD</span>
+    <div class="logo-area">
+        <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" class="logo-img" height="45">
+        <div style="margin-left: 15px;">
+            <h1>MINECRAFT BUILDER</h1>
+            <span style="font-size:12px; color:#888;">GENIALLY BLOB FIX (VER 5.0)</span>
         </div>
     </div>
-    <button class="btn" style="width:auto;" onclick="generateGeniallyCode()">ПОЛУЧИТЬ КОД</button>
+    <button class="btn" style="width: auto;" onclick="generateGeniallyCode()">СГЕНЕРИРОВАТЬ КОД</button>
 </header>
 
 <div class="main">
     <div class="sidebar">
-        <label>Language</label>
+        <label>Interface Language</label>
         <select id="lang">
             <option value="ru">Русский</option>
             <option value="en">English</option>
@@ -58,28 +73,32 @@
             <option value="fr">Français</option>
             <option value="zh">Chinese</option>
         </select>
+        
         <div id="q-list"></div>
         <button class="btn btn-add" onclick="addQuestion()">+ ДОБАВИТЬ ВОПРОС</button>
     </div>
+    
     <div class="preview">
-        <button class="btn btn-update" onclick="updatePreview()">🔄 ОБНОВИТЬ ИГРУ</button>
+        <button class="btn btn-update" onclick="updatePreview()">🔄 ОБНОВИТЬ ПРЕДПРОСМОТР</button>
         <iframe id="preview-frame"></iframe>
     </div>
 </div>
 
+<footer>(c) Корпорация Геймификации Будущего 2026</footer>
+
 <div id="modal" class="modal">
-    <h2 style="color:white; font-family:VT323; font-size: 30px;">КОД ДЛЯ ВСТАВКИ (GENIALLY -> INSERT -> OTHERS)</h2>
-    <p style="color:#aaa; margin-bottom: 10px;">Используется метод Blob (как в Овечке). Копируйте всё полностью.</p>
+    <h2 style="color:white; font-family:'VT323'; font-size:36px; margin-bottom: 10px;">КОД ДЛЯ ВСТАВКИ В GENIALLY</h2>
+    <p style="color:#aaa; font-size:16px;">Копируйте весь код. Вставьте в Genially через <b>Insert -> Others</b>.</p>
     <textarea id="final-code" class="code-box" readonly onclick="this.select()"></textarea>
     <button class="btn" style="width: 200px;" onclick="document.getElementById('modal').style.display='none'">ЗАКРЫТЬ</button>
 </div>
 
-<script id="game-template" type="text/template">
+<script id="game-template" type="text/plain">
 <!DOCTYPE html>
-<html lang="{{LANG}}">
+<html lang="LANG_PLACEHOLDER">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Survival</title>
+    <title>Minecraft: True Survival</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -180,19 +199,19 @@
 </div>
 
 <div id="game-over">
-    <h1 style="font-size: 100px; margin:0; text-shadow: 5px 5px 0 #000; color: #ff5555;">YOU DIED</h1>
-    <p class="btn-respawn" onclick="location.reload()">Respawn</p>
+    <h1 id="lbl-died" style="font-size: 100px; margin:0; text-shadow: 5px 5px 0 #000; color: #ff5555;">YOU DIED</h1>
+    <p id="btn-respawn" class="btn-respawn" onclick="location.reload()">Respawn</p>
 </div>
 
 <div id="win-screen">
-    <h1 style="font-size: 80px; margin:0; text-shadow: 5px 5px 0 #000; color: #55ff55;">QUEST COMPLETE!</h1>
+    <h1 id="lbl-win" style="font-size: 80px; margin:0; text-shadow: 5px 5px 0 #000; color: #55ff55;">QUEST COMPLETE!</h1>
     <div id="win-stats" style="font-size: 35px; text-align: center; margin: 20px;"></div>
-    <p class="btn-respawn" onclick="location.reload()">Play Again</p>
+    <p id="btn-playagain" class="btn-respawn" onclick="location.reload()">Play Again</p>
 </div>
 
 <script>
 // --- КОНФИГУРАЦИЯ ---
-const config = {{CONFIG}};
+const config = CONFIG_PLACEHOLDER;
 
 // --- ПЕРЕВОДЫ ---
 const tr = {
@@ -201,13 +220,18 @@ const tr = {
     de: { q: "AKTUELLE FRAGE", safe: "🛡️ SICHERHEITSZONE", dead: "DU BIST GESTORBEN", win: "QUEST ABGESCHLOSSEN!", respawn: "Wiederbeleben", again: "Nochmal spielen", done: "Du hast es gemeistert!" },
     fr: { q: "QUESTION ACTUELLE", safe: "🛡️ ZONE SÛRE", dead: "VOUS ÊTES MORT", win: "QUÊTE TERMINÉE!", respawn: "Respawn", again: "Rejouer", done: "Vous avez maîtrisé le sujet!" },
     es: { q: "PREGUNTA ACTUAL", safe: "🛡️ ZONA SEGURA", dead: "HAS MUERTO", win: "¡MISIÓN CUMPLIDA!", respawn: "Reaparecer", again: "Jugar de nuevo", done: "¡Dominaste el tema!" },
+    ja: { q: "現在の質問", safe: "🛡️ 安全地帯", dead: "死んでしまった", win: "クエスト完了！", respawn: "リスポーン", again: "もう一度プレイ", done: "よくできました！" },
     zh: { q: "当前问题", safe: "🛡️ 安全区", dead: "你死了", win: "任务完成！", respawn: "重生", again: "再玩一次", done: "你掌握了它！" }
 };
 const t = tr[config.lang] || tr.en;
 document.getElementById('lbl-question').innerText = t.q;
 document.getElementById('house-status').innerText = t.safe;
+document.getElementById('lbl-died').innerText = t.dead;
+document.getElementById('lbl-win').innerText = t.win;
+document.getElementById('btn-respawn').innerText = t.respawn;
+document.getElementById('btn-playagain').innerText = t.again;
 
-// --- ДВИЖОК ИГРЫ (ОРИГИНАЛЬНЫЙ) ---
+// --- ИСХОДНЫЙ КОД ИГРЫ (ОРИГИНАЛ) ---
 let scene, camera, renderer, weaponGroup, flash;
 let score = 0, currentQ = 0, health = 5, combo = 0;
 let targets = [], particles = [], bonuses = [], items = [], projectiles = [], houses = [];
@@ -404,7 +428,6 @@ function createMob(text, type) {
     const legR = new THREE.Mesh(legGeo, matSkin); legR.position.set(0.15, 0.75, 0);
     mob.add(body, head, armL, armR, legL, legR); mob.castShadow = true;
 
-    // --- SUPPORT FOR IMAGES & LATEX ON MOBS ---
     if(text.startsWith('http')) {
         const map = new THREE.TextureLoader().load(text);
         map.magFilter = THREE.NearestFilter;
@@ -413,7 +436,6 @@ function createMob(text, type) {
         sprite.position.y = 2.6;
         mob.add(sprite);
     } else {
-        // ИСПОЛЬЗУЕМ DOM ЭЛЕМЕНТЫ ДЛЯ ТЕКСТА
         const d = document.createElement("div");
         d.style.position = "absolute";
         d.style.color = "#ffff55";
@@ -466,7 +488,6 @@ function loadQuestion() {
     
     const qData = config.questions[currentQ];
     
-    // --- TEXT / LATEX / IMAGE QUESTION HANDLER ---
     const qEl = document.getElementById('q-text');
     const qImg = document.getElementById('q-img');
     
@@ -635,7 +656,6 @@ function animate() {
     targets.forEach(t => {
         const mob = t.obj; const dist = mob.position.distanceTo(camera.position);
         
-        // --- LABEL UPDATE FOR DOM ELEMENTS ---
         if(mob.userData.label) {
             const pos = mob.position.clone().add(new THREE.Vector3(0, 2.5, 0));
             pos.project(camera);
@@ -767,13 +787,13 @@ init();
         // Получаем исходный код игры из скрытого блока
         let code = document.getElementById('game-template').innerHTML;
         // Вставляем язык
-        code = code.replace('{{LANG}}', lang);
+        code = code.replace('LANG_PLACEHOLDER', lang);
         // Вставляем конфиг
-        code = code.replace('{{CONFIG}}', configStr);
+        code = code.replace('CONFIG_PLACEHOLDER', configStr);
         return code;
     }
 
-    // --- ПРЕДПРОСМОТР (ЧЕРЕЗ BLOB - КАК В ОВЕЧКЕ) ---
+    // --- ПРЕДПРОСМОТР (ЧЕРЕЗ BLOB) ---
     function updatePreview() {
         const gameHtml = buildGameString();
         // СОЗДАЕМ BLOB - ЭТО КЛЮЧЕВОЙ МОМЕНТ
@@ -787,6 +807,7 @@ init();
         let gameCode = buildGameString();
         
         // ЭКРАНИРОВАНИЕ ДЛЯ ВСТАВКИ В JS СТРОКУ
+        // САМОЕ ВАЖНОЕ: Экранируем ${, \, ` чтобы Genially не сломался
         gameCode = gameCode.replace(/\\/g, '\\\\')  // Экранируем слэши
                            .replace(/`/g, '\\`')    // Экранируем обратные кавычки
                            .replace(/\${/g, '\\${'); // Экранируем ${}
