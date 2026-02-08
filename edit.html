@@ -2,47 +2,34 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Editor (Base64 Safe Mode)</title>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <title>Minecraft Editor (Fixed Blob)</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; background: #121212; color: #eee; font-family: 'Roboto', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { margin: 0; background: #1a1a1a; color: #eee; font-family: 'Roboto', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         header { background: #000; padding: 15px 20px; border-bottom: 3px solid #55ff55; display: flex; justify-content: space-between; align-items: center; }
-        h1 { font-family: 'VT323'; color: #55ff55; margin: 0; font-size: 28px; text-shadow: 2px 2px 0 #004400; }
-        
+        h1 { font-family: 'VT323'; color: #55ff55; margin: 0; font-size: 28px; }
         .main { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 450px; background: #1e1e1e; border-right: 1px solid #333; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .preview { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
-        
+        .sidebar { width: 420px; background: #222; border-right: 1px solid #444; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .preview { flex: 1; background: #000; position: relative; }
         iframe#preview-frame { width: 100%; height: 100%; border: none; background: #87CEEB; }
-
-        input, select { width: 100%; background: #2d2d2d; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 4px; box-sizing: border-box; font-family: 'VT323'; font-size: 18px; margin-bottom: 5px; }
-        .q-card { background: #252525; padding: 15px; border: 1px solid #444; border-radius: 6px; position: relative; margin-bottom: 10px; }
-        .btn-del { position: absolute; top: 10px; right: 10px; background: #d32f2f; color: white; border: none; cursor: pointer; padding: 2px 8px; border-radius: 3px; font-family: 'VT323'; font-size: 16px; }
-        .ans-row { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
-        .ans-row input[type="radio"] { accent-color: #55ff55; transform: scale(1.5); }
-        
-        .btn { background: #55ff55; color: #000; border: none; padding: 10px 25px; font-family: 'VT323'; font-size: 22px; cursor: pointer; font-weight: bold; border-radius: 4px; width: 100%; text-transform: uppercase; }
+        input, select { width: 100%; background: #333; border: 1px solid #555; color: #fff; padding: 10px; margin-bottom: 5px; box-sizing: border-box; font-family: 'VT323'; font-size: 18px; }
+        .q-card { background: #2d2d2d; padding: 15px; border: 1px solid #444; border-radius: 6px; position: relative; margin-bottom: 10px; }
+        .btn-del { position: absolute; top: 10px; right: 10px; background: #ff4444; border: none; color: white; cursor: pointer; }
+        .btn { background: #55ff55; color: #000; border: none; padding: 12px; font-family: 'VT323'; font-size: 20px; cursor: pointer; width: 100%; font-weight: bold; }
         .btn:hover { background: #44ee44; }
-        .btn-add { background: transparent; color: #87CEEB; border: 2px dashed #87CEEB; margin-top: 10px; }
-        .btn-update { position: absolute; top: 20px; right: 20px; width: auto; z-index: 100; box-shadow: 0 4px 0 #004400; font-size: 18px; }
-
+        .btn-add { background: transparent; color: #87CEEB; border: 2px dashed #87CEEB; }
+        .btn-update { position: absolute; top: 20px; right: 20px; width: auto; z-index: 100; box-shadow: 0 4px 0 #004400; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; }
-        .code-box { width: 80%; height: 70%; background: #111; color: #55ff55; border: 2px solid #555; padding: 15px; font-family: monospace; resize: none; margin-bottom: 15px; font-size: 12px; }
+        .code-box { width: 80%; height: 70%; background: #111; color: #55ff55; border: 2px solid #555; padding: 15px; font-family: monospace; resize: none; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="display:flex; align-items:center; gap:15px;">
-        <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" height="40">
-        <div>
-            <h1>MINECRAFT BUILDER</h1>
-            <span style="font-size:12px; color:#888;">BASE64 MODE (SAFE & STABLE)</span>
-        </div>
-    </div>
-    <button class="btn" style="width: auto;" onclick="generateBase64Code()">ПОЛУЧИТЬ КОД</button>
+    <h1>MINECRAFT BUILDER (BLOB FIX)</h1>
+    <button class="btn" style="width: auto;" onclick="generateGeniallyCode()">ПОЛУЧИТЬ КОД</button>
 </header>
 
 <div class="main">
@@ -60,87 +47,52 @@
         <button class="btn btn-add" onclick="addQuestion()">+ ДОБАВИТЬ ВОПРОС</button>
     </div>
     <div class="preview">
-        <button class="btn btn-update" onclick="updatePreview()">🔄 ОБНОВИТЬ ИГРУ</button>
+        <button class="btn btn-update" onclick="updatePreview()">🔄 ОБНОВИТЬ</button>
         <iframe id="preview-frame"></iframe>
     </div>
 </div>
 
 <div id="modal" class="modal">
-    <h2 style="color:white; font-family:VT323; font-size: 30px;">КОД ДЛЯ ВСТАВКИ (GENIALLY)</h2>
-    <p style="color:#aaa; margin-bottom: 10px;">Этот код закодирован. Он выглядит как набор символов, но это нормально. Копируйте всё.</p>
+    <h2 style="color:white; font-family:VT323">КОПИРУЙТЕ ВЕСЬ КОД (Genially -> Insert -> Others)</h2>
     <textarea id="final-code" class="code-box" readonly onclick="this.select()"></textarea>
-    <button class="btn" style="width: 200px;" onclick="document.getElementById('modal').style.display='none'">ЗАКРЫТЬ</button>
+    <button class="btn" style="width: 200px; margin-top:10px;" onclick="document.getElementById('modal').style.display='none'">ЗАКРЫТЬ</button>
 </div>
 
-<script id="game-source" type="text/plain">
+<textarea id="game-template" style="display:none;">
 <!DOCTYPE html>
 <html lang="__LANG__">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft: True Survival v20 (Numbers Edition)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+    <title>Minecraft: True Survival</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
         #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
-        
-        .float-text {
-            position: absolute; color: #ffff55; font-size: 40px; font-weight: bold;
-            text-shadow: 3px 3px 0 #000; pointer-events: none;
-            animation: floatUp 1s forwards; white-space: nowrap;
-        }
+        .float-text { position: absolute; color: #ffff55; font-size: 40px; font-weight: bold; text-shadow: 3px 3px 0 #000; pointer-events: none; animation: floatUp 1s forwards; white-space: nowrap; }
         .crit { color: #ff3333; font-size: 60px; text-shadow: 4px 4px 0 #000; }
         @keyframes floatUp { to { transform: translateY(-120px) scale(1.2); opacity: 0; } }
-
-        #house-status {
-            position: absolute; top: 100px; width: 100%; text-align: center;
-            font-size: 30px; color: #55ff55; text-shadow: 2px 2px 0 #000; display: none;
-        }
-
-        #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 24px; height: 24px;
-            transform: translate(-50%, -50%); mix-blend-mode: difference;
-        }
+        #house-status { position: absolute; top: 100px; width: 100%; text-align: center; font-size: 30px; color: #55ff55; text-shadow: 2px 2px 0 #000; display: none; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); mix-blend-mode: difference; }
         #crosshair::before { content: ''; position: absolute; top: 11px; left: 0; width: 24px; height: 2px; background: white; }
         #crosshair::after { content: ''; position: absolute; top: 0; left: 11px; width: 2px; height: 24px; background: white; }
-
-        #bottom-ui {
-            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-            width: 600px; text-align: center;
-        }
-        
+        #bottom-ui { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 600px; text-align: center; }
         .hearts { display: flex; gap: 4px; justify-content: center; margin-bottom: 5px; }
-        .heart {
-            width: 32px; height: 32px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23ff0000" stroke="black" stroke-width="0.5" d="M2 1h2v1h2V1h2v2H7v1H6v1H5v1H4V5H3V4H2V2h2z"/></svg>');
-            background-size: contain; image-rendering: pixelated;
-        }
+        .heart { width: 32px; height: 32px; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path fill="%23ff0000" stroke="black" stroke-width="0.5" d="M2 1h2v1h2V1h2v2H7v1H6v1H5v1H4V5H3V4H2V2h2z"/></svg>'); background-size: contain; image-rendering: pixelated; }
         .heart.lost { filter: grayscale(100%) brightness(0.3); }
-
         #xp-bar { width: 100%; height: 16px; background: #222; border: 3px solid #000; position: relative; margin-bottom: 10px; }
         #xp-fill { height: 100%; background: linear-gradient(to right, #00ff00, #55ff55); width: 0%; transition: width 0.2s; }
         #xp-info { position: absolute; top: -35px; width: 100%; color: #80ff00; font-size: 30px; text-shadow: 2px 2px 0 #000; display: flex; justify-content: space-around; }
-        
         #hotbar { display: flex; justify-content: center; gap: 4px; background: rgba(0,0,0,0.6); padding: 5px; border: 2px solid #fff; border-radius: 4px; }
-        .slot {
-            width: 60px; height: 60px; background: #8b8b8b; border: 4px solid #373737; border-top-color: #ddd; border-left-color: #ddd;
-            display: flex; align-items: center; justify-content: center; font-size: 30px; color: white;
-        }
+        .slot { width: 60px; height: 60px; background: #8b8b8b; border: 4px solid #373737; border-top-color: #ddd; border-left-color: #ddd; display: flex; align-items: center; justify-content: center; font-size: 30px; color: white; }
         .slot.active { border-color: white; background: #a0a0a0; transform: scale(1.1); }
-
-        #quest-box {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); padding: 15px 40px; border: 3px solid #fff;
-            color: white; text-align: center;
-            min-width: 300px;
-        }
+        #quest-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 15px 40px; border: 3px solid #fff; color: white; text-align: center; min-width: 300px; }
         #q-text { font-size: 32px; color: #ffff55; text-shadow: 2px 2px 0 #333; }
         #q-img { max-height: 150px; border: 2px solid white; margin-top: 10px; display: none; }
-
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; }
         #fire-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 40%; background: linear-gradient(transparent, rgba(255, 100, 0, 0.5)); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-        
         #game-over, #win-screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 999; }
         #game-over { background: rgba(50,0,0,0.9); }
         #win-screen { background: rgba(0,50,0,0.9); }
@@ -148,45 +100,19 @@
     </style>
 </head>
 <body>
-
-<div id="damage-overlay"></div>
-<div id="fire-overlay"></div>
-
+<div id="damage-overlay"></div><div id="fire-overlay"></div>
 <div id="hud">
-    <div id="quest-box">
-        <div id="lbl-question" style="color: #aaa; font-size: 18px; letter-spacing: 2px;">ТЕКУЩИЙ ВОПРОС</div>
-        <div id="q-text">Загрузка...</div>
-        <img id="q-img" src="">
-    </div>
-    <div id="house-status">🛡️ В УКРЫТИИ</div>
-    <div id="crosshair"></div>
+    <div id="quest-box"><div id="lbl-question" style="color: #aaa; font-size: 18px; letter-spacing: 2px;">Q</div><div id="q-text">...</div><img id="q-img" src=""></div>
+    <div id="house-status"></div><div id="crosshair"></div>
     <div id="bottom-ui">
-        <div id="xp-info">
-            <span>XP: <span id="lvl-num">0</span></span>
-            <span style="color: #ffd700">COMBO: x<span id="combo-num">0</span></span>
-        </div>
-        <div class="hearts" id="hearts-container">
-            <div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div>
-        </div>
+        <div id="xp-info"><span>XP: <span id="lvl-num">0</span></span><span style="color: #ffd700">COMBO: x<span id="combo-num">0</span></span></div>
+        <div class="hearts" id="hearts-container"><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div><div class="heart"></div></div>
         <div id="xp-bar"><div id="xp-fill"></div></div>
-        <div id="hotbar">
-            <div class="slot active" id="slot-0">🔫</div>
-            <div class="slot" id="slot-1"></div>
-            <div class="slot" id="slot-2"></div>
-        </div>
+        <div id="hotbar"><div class="slot active" id="slot-0">🔫</div><div class="slot" id="slot-1"></div><div class="slot" id="slot-2"></div></div>
     </div>
 </div>
-
-<div id="game-over">
-    <h1 id="lbl-died" style="font-size: 100px; margin:0; text-shadow: 5px 5px 0 #000; color: #ff5555;">YOU DIED</h1>
-    <p id="btn-respawn" class="btn-respawn" onclick="location.reload()">Respawn</p>
-</div>
-
-<div id="win-screen">
-    <h1 id="lbl-win" style="font-size: 80px; margin:0; text-shadow: 5px 5px 0 #000; color: #55ff55;">QUEST COMPLETE!</h1>
-    <div id="win-stats" style="font-size: 35px; text-align: center; margin: 20px;"></div>
-    <p id="btn-playagain" class="btn-respawn" onclick="location.reload()">Play Again</p>
-</div>
+<div id="game-over"><h1 id="lbl-died" style="font-size:100px;margin:0;text-shadow:5px 5px 0 #000;color:#ff5555">YOU DIED</h1><p class="btn-respawn" onclick="location.reload()">Respawn</p></div>
+<div id="win-screen"><h1 id="lbl-win" style="font-size:80px;margin:0;text-shadow:5px 5px 0 #000;color:#55ff55">QUEST COMPLETE!</h1><div id="win-stats" style="font-size:35px;text-align:center;margin:20px"></div><p class="btn-respawn" onclick="location.reload()">Play Again</p></div>
 
 <script>
 // --- CONFIGURATION ---
@@ -227,32 +153,20 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const FOOTSTEP_URL = 'https://raw.githack.com/kgbgamelab/minecraft/main/footsteps.wav';
 let footstepBuffer = null;
 const audioLoader = new THREE.AudioLoader();
-audioLoader.load(FOOTSTEP_URL, (b) => { footstepBuffer = b; console.log("Шаги OK"); });
+audioLoader.load(FOOTSTEP_URL, (b) => { footstepBuffer = b; });
 
 function playSound(type) {
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const t = audioCtx.currentTime;
     const g = audioCtx.createGain(); g.connect(audioCtx.destination);
-
     if(type === 'step' && footstepBuffer) {
         const src = audioCtx.createBufferSource(); src.buffer = footstepBuffer;
         src.playbackRate.value = 0.95 + Math.random() * 0.1; g.gain.value = 1.0; 
-        src.connect(g); src.start(0);
-        src.stop(t + 0.25);
-    } 
-    else {
+        src.connect(g); src.start(0); src.stop(t + 0.25);
+    } else {
         const osc = audioCtx.createOscillator(); osc.connect(g);
-        if(type === 'shoot') { 
-            osc.type='sawtooth'; 
-            osc.frequency.setValueAtTime(1200, t);
-            osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
-            g.gain.setValueAtTime(0.2, t); 
-            g.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-            osc.start(); osc.stop(t + 0.15); 
-        }
-        else if(type === 'sword_hit') { 
-            osc.type='square'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.linearRampToValueAtTime(0, t + 0.1); osc.start(); osc.stop(t + 0.1);
-        }
+        if(type === 'shoot') { osc.type='sawtooth'; osc.frequency.setValueAtTime(1200, t); osc.frequency.exponentialRampToValueAtTime(100, t + 0.15); g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.15); osc.start(); osc.stop(t + 0.15); }
+        else if(type === 'sword_hit') { osc.type='square'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.linearRampToValueAtTime(0, t + 0.1); osc.start(); osc.stop(t + 0.1); }
         else if(type === 'bow') { osc.type='triangle'; osc.frequency.setValueAtTime(600, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); }
         else if(type === 'hit') { osc.type='sawtooth'; osc.frequency.setValueAtTime(100, t); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.2); osc.start(); osc.stop(t+0.2); }
         else if(type === 'loot') { osc.type='sine'; osc.frequency.setValueAtTime(1200, t); g.gain.setValueAtTime(0.3, t); g.gain.exponentialRampToValueAtTime(0.01, t+0.5); osc.start(); osc.stop(t+0.5); }
@@ -263,7 +177,6 @@ function playSound(type) {
 function createTexture(type) {
     const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64; const ctx = canvas.getContext('2d');
     const fillNoise = (c) => { ctx.fillStyle = c; ctx.fillRect(0,0,64,64); for(let i=0; i<400; i++) { ctx.fillStyle=`rgba(0,0,0,0.1)`; ctx.fillRect(Math.random()*64,Math.random()*64,4,4); }};
-
     if(type === 'grass_top') { fillNoise('#5da34b'); ctx.fillStyle='#4a8f3a'; for(let i=0;i<50;i++) ctx.fillRect(Math.random()*60,Math.random()*60,4,4); }
     else if (type === 'side') { fillNoise('#6d4e34'); ctx.fillStyle='#5da34b'; ctx.fillRect(0,0,64,15); }
     else if (type === 'wood') { ctx.fillStyle='#5c4033'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#4a332a'; for(let i=1;i<4;i++) ctx.fillRect(i*16,0,4,64); }
@@ -273,7 +186,6 @@ function createTexture(type) {
     else if (type === 'chest') { ctx.fillStyle='#6d4e34'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#000'; ctx.strokeRect(2,2,60,60); ctx.fillStyle='#FFD700'; ctx.fillRect(28,24,8,12); }
     else if (type === 'skel_body') { ctx.fillStyle='#333'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#ddd'; ctx.fillRect(28, 0, 8, 64); for(let i=10; i<50; i+=10) ctx.fillRect(10, i, 44, 4); }
     else if (type === 'skel_face') { ctx.fillStyle='#ccc'; ctx.fillRect(0,0,64,64); ctx.fillStyle='#111'; ctx.fillRect(10,20,16,14); ctx.fillRect(38,20,16,14); ctx.fillRect(28,40,8,8); ctx.fillStyle='#555'; ctx.fillRect(10,55,44,4); }
-
     const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.NearestFilter; return tex;
 }
 const textures = { grass: createTexture('grass_top'), side: createTexture('side'), wood: createTexture('wood'), planks: createTexture('planks'), face: createTexture('face'), leaves: createTexture('leaves'), chest: createTexture('chest'), skel_body: createTexture('skel_body'), skel_face: createTexture('skel_face') };
@@ -282,49 +194,24 @@ function init() {
     scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 20, 80);
     camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000); camera.rotation.order = 'YXZ';
     weaponGroup = new THREE.Group(); scene.add(weaponGroup);
-
     renderer = new THREE.WebGLRenderer({ antialias: false }); renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(renderer.domElement);
-
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; document.body.appendChild(renderer.domElement);
     const ambient = new THREE.AmbientLight(0xffffff, 0.5); scene.add(ambient);
     const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(50, 100, 50); sun.castShadow = true;
     sun.shadow.mapSize.width = 2048; sun.shadow.mapSize.height = 2048; scene.add(sun);
-
     createWorld(); setWeapon('gun'); spawnLoot(); loadQuestion();
-    
-    document.addEventListener('keydown', e => {
-        if(isDead || isWin) return;
-        if(e.key === '1') setWeapon('gun'); 
-        if(e.key === '2' && inventory.includes('sword')) setWeapon('sword');
-        if(e.code === 'Space') { move.jump = true; }
-        if(e.code === 'ShiftLeft') { move.sprint = true; }
-        handleKeys(e.code, true);
-    });
-    document.addEventListener('keyup', e => {
-        if(e.code === 'Space') move.jump = false;
-        if(e.code === 'ShiftLeft') move.sprint = false;
-        handleKeys(e.code, false);
-    });
-    document.addEventListener('mousedown', attack);
-    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('keydown', e => { if(isDead || isWin) return; if(e.key === '1') setWeapon('gun'); if(e.key === '2' && inventory.includes('sword')) setWeapon('sword'); if(e.code === 'Space') { move.jump = true; } if(e.code === 'ShiftLeft') { move.sprint = true; } handleKeys(e.code, true); });
+    document.addEventListener('keyup', e => { if(e.code === 'Space') move.jump = false; if(e.code === 'ShiftLeft') move.sprint = false; handleKeys(e.code, false); });
+    document.addEventListener('mousedown', attack); document.addEventListener('mousemove', onMouseMove);
     window.addEventListener('resize', () => { camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     animate();
 }
 
 function createWorld() {
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshLambertMaterial({map: textures.grass}));
-    floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; 
-    floor.material.map.wrapS = floor.material.map.wrapT = THREE.RepeatWrapping; floor.material.map.repeat.set(100, 100);
-    scene.add(floor);
-
+    floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; floor.material.map.wrapS = floor.material.map.wrapT = THREE.RepeatWrapping; floor.material.map.repeat.set(100, 100); scene.add(floor);
     createHouse(20, 0, 20); createHouse(-30, 0, -30); createHouse(40, 0, -10);
-
-    for(let i=0; i<40; i++) {
-        const x = Math.random()*200-100; const z = Math.random()*200-100;
-        let tooClose = false; houses.forEach(h => { if(new THREE.Vector3(x,0,z).distanceTo(h.pos) < 8) tooClose = true; });
-        if(!tooClose && (Math.abs(x)>10 || Math.abs(z)>10)) createTree(x, z);
-    }
+    for(let i=0; i<40; i++) { const x = Math.random()*200-100; const z = Math.random()*200-100; let tooClose = false; houses.forEach(h => { if(new THREE.Vector3(x,0,z).distanceTo(h.pos) < 8) tooClose = true; }); if(!tooClose && (Math.abs(x)>10 || Math.abs(z)>10)) createTree(x, z); }
 }
 
 function createHouse(x, y, z) {
@@ -377,12 +264,9 @@ function spawnLoot() {
     sword.position.set(5, 0.5, 5); sword.rotation.z = Math.PI/2; sword.userData = { type: 'sword_item' }; scene.add(sword); items.push(sword);
 }
 
-// --- HELPER FOR LATEX RENDERING ON MOBS ---
 function renderText(el, text) {
     if(text.includes("$")) {
-        try {
-            katex.render(text.replace(/\\$/g, ""), el, {throwOnError:false});
-        } catch(e) { el.innerText = text; }
+        try { katex.render(text.replace(/\$/g, ""), el, {throwOnError:false}); } catch(e) { el.innerText = text; }
     } else { el.innerText = text; }
 }
 
@@ -404,7 +288,6 @@ function createMob(text, type) {
     const legR = new THREE.Mesh(legGeo, matSkin); legR.position.set(0.15, 0.75, 0);
     mob.add(body, head, armL, armR, legL, legR); mob.castShadow = true;
 
-    // --- SUPPORT FOR IMAGES & LATEX ON MOBS ---
     if(text.startsWith('http')) {
         const map = new THREE.TextureLoader().load(text);
         map.magFilter = THREE.NearestFilter;
@@ -443,45 +326,26 @@ function finishGame() {
     const winScreen = document.getElementById('win-screen');
     const stats = document.getElementById('win-stats');
     winScreen.style.display = 'flex';
-    
     let title = "Math Explorer";
     if(score > 1000) title = "Village Teacher";
     if(score > 3000) title = "University Professor";
     if(score > 5000) title = "Lord of Numbers";
     if(score > 8000) title = "Eternal Mathematician";
-
-    stats.innerHTML = `<div style="color: #ffff55">FINAL SCORE: ${score}</div>
-        <div style="color: #55ff55">TITLE: ${title}</div>
-        <div style="font-size: 20px; color: #aaa; margin-top: 10px">${t.done}</div>`;
+    stats.innerHTML = `<div style="color: #ffff55">FINAL SCORE: ${score}</div><div style="color: #55ff55">TITLE: ${title}</div><div style="font-size: 20px; color: #aaa; margin-top: 10px">${t.done}</div>`;
 }
 
 function loadQuestion() {
     if(currentQ >= config.questions.length) { finishGame(); return; }
-    targets.forEach(t => {
-        scene.remove(t.obj);
-        if(t.obj.userData.label) t.obj.userData.label.remove();
-    });
+    targets.forEach(t => { scene.remove(t.obj); if(t.obj.userData.label) t.obj.userData.label.remove(); });
     targets = [];
-    
     const qData = config.questions[currentQ];
-    
     const qEl = document.getElementById('q-text');
     const qImg = document.getElementById('q-img');
-    
-    if(qData.q.startsWith('http')) {
-        qEl.style.display = 'none';
-        qImg.src = qData.q;
-        qImg.style.display = 'block';
-    } else {
-        qEl.style.display = 'block';
-        qImg.style.display = 'none';
-        renderText(qEl, qData.q);
-    }
-    
+    if(qData.q.startsWith('http')) { qEl.style.display = 'none'; qImg.src = qData.q; qImg.style.display = 'block'; }
+    else { qEl.style.display = 'block'; qImg.style.display = 'none'; renderText(qEl, qData.q); }
     qData.a.forEach((ans, i) => {
         const randomType = Math.random() > 0.5 ? 'zombie' : 'skeleton';
         const mob = createMob(ans, randomType);
-        
         const angle = (i * (Math.PI*2/qData.a.length)) + (Math.random()*0.5); 
         const radius = 22;
         mob.position.set(Math.cos(angle)*radius, 0, Math.sin(angle)*radius);
@@ -503,14 +367,9 @@ function spawnFloatingText(x, y, z, text, color) {
 function attack() {
     if(isDead || isWin || isSwinging) return;
     isSwinging = true; swingProgress = 0;
-    if(currentWeaponType === 'gun') {
-        playSound('shoot'); 
-        if(flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); }
-    } else playSound('sword_hit'); 
-
+    if(currentWeaponType === 'gun') { playSound('shoot'); if(flash) { flash.intensity = 2; setTimeout(()=>flash.intensity=0, 50); } } else playSound('sword_hit'); 
     const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
     const hits = ray.intersectObjects(scene.children, true);
-
     if(hits.length > 0) {
         let hit = hits[0].object; let root = hit; while(root.parent && root.parent.type !== 'Scene') root = root.parent;
         if(bonuses.includes(root)) { playSound('loot'); scene.remove(root); bonuses = bonuses.filter(b => b !== root); score += 200; updateUI(); spawnFloatingText(root.position.x, root.position.y, root.position.z, "+200 XP", "#ffff00"); spawnParticles(root.position, 0xffff00); return; }
@@ -548,16 +407,13 @@ function shootArrow(fromPos, toPos) {
 }
 
 function checkHouseProtection(pos) {
-    for(let h of houses) {
-        if (h.hp > 0 && pos.x > h.bounds.minX + 0.5 && pos.x < h.bounds.maxX - 0.5 && pos.z > h.bounds.minZ + 0.5 && pos.z < h.bounds.maxZ - 0.5) return h;
-    }
+    for(let h of houses) { if (h.hp > 0 && pos.x > h.bounds.minX + 0.5 && pos.x < h.bounds.maxX - 0.5 && pos.z > h.bounds.minZ + 0.5 && pos.z < h.bounds.maxZ - 0.5) return h; }
     return null;
 }
 
 function takeDamage(isFire) {
     if(isDead || isWin) return; 
-    const house = checkHouseProtection(camera.position);
-    if(house) return; 
+    const house = checkHouseProtection(camera.position); if(house) return; 
     const now = Date.now(); if (now - lastDamageTime < 1000) return; lastDamageTime = now;
     playSound('hit'); health--;
     const hearts = document.querySelectorAll('.heart'); if(hearts[health]) hearts[health].classList.add('lost');
@@ -589,8 +445,7 @@ function updatePhysics(delta) {
     for(let h of houses) {
         if(h.hp <= 0) continue;
         if (nextX > h.bounds.minX - wallT && nextX < h.bounds.maxX + wallT && camera.position.z > h.bounds.minZ - wallT && camera.position.z < h.bounds.maxZ + wallT) {
-            if (!(camera.position.z > h.pos.z + 2.5 && nextZ < h.pos.z + 3.5)) {
-            }
+            if (!(camera.position.z > h.pos.z + 2.5 && nextZ < h.pos.z + 3.5)) { }
         }
         if (nextX > h.bounds.minX - wallT && nextX < h.bounds.minX + wallT && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) canMoveX = false;
         if (nextX > h.bounds.maxX - wallT && nextX < h.bounds.maxX + wallT && camera.position.z > h.bounds.minZ && camera.position.z < h.bounds.maxZ) {
@@ -607,9 +462,7 @@ function updatePhysics(delta) {
     const house = checkHouseProtection(camera.position);
     document.getElementById('house-status').style.display = house ? 'block' : 'none';
     const stepInterval = move.sprint ? 300 : 500;
-    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > stepInterval) {
-        playSound('step'); stepTimer = Date.now();
-    }
+    if(direction.length() > 0 && player.onGround && Date.now() - stepTimer > stepInterval) { playSound('step'); stepTimer = Date.now(); }
 }
 
 function animate() {
@@ -652,32 +505,17 @@ function animate() {
                 if(mob.userData.type === 'skeleton') {
                     if(dist > 12) mob.translateZ(3 * delta);
                     mob.userData.shotTimer += delta;
-                    if(mob.userData.shotTimer > 2.0) { 
-                        shootArrow(mob.position, camera.position); 
-                        mob.userData.shotTimer = 0; 
-                    }
+                    if(mob.userData.shotTimer > 2.0) { shootArrow(mob.position, camera.position); mob.userData.shotTimer = 0; }
                 } else {
                     let canMoveTowardsPlayer = true;
                     if (playerInHouse) {
                         const mobInHouse = checkHouseProtection(mob.position);
                         if (dist < 4.5 || mobInHouse) {
                             canMoveTowardsPlayer = false;
-                            if (Math.random() < 0.05) { 
-                                playerInHouse.hp -= 0.5; 
-                                playSound('break');
-                                spawnParticles(playerInHouse.pos, 0x8b4513);
-                                if (playerInHouse.hp <= 0) {
-                                    scene.remove(playerInHouse.mesh);
-                                    playSound('hit');
-                                }
-                            }
+                            if (Math.random() < 0.05) { playerInHouse.hp -= 0.5; playSound('break'); spawnParticles(playerInHouse.pos, 0x8b4513); if (playerInHouse.hp <= 0) { scene.remove(playerInHouse.mesh); playSound('hit'); } }
                         }
                     }
-                    if(dist > 2.5 && canMoveTowardsPlayer) {
-                        mob.translateZ(6 * delta);
-                    } else if (dist <= 2.5 && !playerInHouse) {
-                        takeDamage(false); 
-                    }
+                    if(dist > 2.5 && canMoveTowardsPlayer) { mob.translateZ(6 * delta); } else if (dist <= 2.5 && !playerInHouse) { takeDamage(false); }
                 }
             }
         } else {
@@ -691,17 +529,9 @@ function animate() {
     for(let i=projectiles.length-1; i>=0; i--) {
         const arr = projectiles[i]; arr.position.add(arr.userData.vel.clone().multiplyScalar(delta));
         const projInHouse = checkHouseProtection(arr.position);
-        if (projInHouse) {
-            projInHouse.hp -= 1;
-            playSound('break');
-            scene.remove(arr); projectiles.splice(i,1);
-            if (projInHouse.hp <= 0) scene.remove(projInHouse.mesh);
-        } else if(arr.position.distanceTo(camera.position) < 2.0) { 
-            if (!playerInHouse) takeDamage(true); 
-            scene.remove(arr); projectiles.splice(i,1); 
-        } else if(arr.position.y < 0 || arr.position.distanceTo(camera.position) > 100) { 
-            scene.remove(arr); projectiles.splice(i,1); 
-        }
+        if (projInHouse) { projInHouse.hp -= 1; playSound('break'); scene.remove(arr); projectiles.splice(i,1); if (projInHouse.hp <= 0) scene.remove(projInHouse.mesh); }
+        else if(arr.position.distanceTo(camera.position) < 2.0) { if (!playerInHouse) takeDamage(true); scene.remove(arr); projectiles.splice(i,1); }
+        else if(arr.position.y < 0 || arr.position.distanceTo(camera.position) > 100) { scene.remove(arr); projectiles.splice(i,1); }
     }
     bonuses.forEach(b => b.rotation.y += 0.02); items.forEach(i => i.rotation.y += 0.02);
     for(let i=particles.length-1; i>=0; i--) { const p = particles[i]; p.m.position.add(p.v); p.v.y -= 0.02; if(p.m.position.y < 0) { scene.remove(p.m); particles.splice(i,1); } }
@@ -714,10 +544,10 @@ init();
 <\/script>
 </body>
 </html>
-</script>
+</textarea>
 
 <script>
-    // --- ДАННЫЕ РЕДАКТОРА ---
+    // ДАННЫЕ РЕДАКТОРА
     let questions = [{ q: "2 + 2 = $4$", a: ["$4$", "$5$", "$6$"], c: 0 }];
 
     function renderList() {
@@ -751,46 +581,40 @@ init();
         if(type === 'a') questions[i].a[idx] = val;
     }
 
-    // --- СБОРКА ИГРЫ (ОБЫЧНАЯ ДЛЯ ПРЕВЬЮ) ---
+    // СБОРКА КОДА ИГРЫ
     function buildGameString() {
         const lang = document.getElementById('lang').value;
         const configStr = JSON.stringify({ lang: lang, questions: questions });
-        let code = document.getElementById('game-source').innerHTML;
+        // ЧИТАЕМ ИЗ TEXTAREA ЧТОБЫ СОХРАНИТЬ ВСЕ СИМВОЛЫ
+        let code = document.getElementById('game-template').value;
         code = code.replace('LANG_PLACEHOLDER', lang);
-        code = code.replace('CONFIG_PLACEHOLDER', configStr);
+        code = code.replace('__CONFIG__', configStr);
         return code;
     }
 
+    // ОБНОВЛЕНИЕ ПРЕВЬЮ
     function updatePreview() {
         const gameHtml = buildGameString();
-        // Используем Blob для превью
         const blob = new Blob([gameHtml], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         document.getElementById('preview-frame').src = url;
     }
 
-    // --- ГЕНЕРАЦИЯ БЕЗОПАСНОГО КОДА (BASE64) ---
-    function generateBase64Code() {
+    // ГЕНЕРАЦИЯ КОДА ДЛЯ GENIALLY
+    function generateGeniallyCode() {
         let gameCode = buildGameString();
         
-        // 1. Кодируем в Base64 (с поддержкой русских букв)
-        const base64 = btoa(unescape(encodeURIComponent(gameCode)));
+        // Экранирование для вставки в шаблонную строку JS
+        gameCode = gameCode.replace(/\\/g, '\\\\')  // Слэши
+                           .replace(/`/g, '\\`')    // Обратные кавычки
+                           .replace(/\${/g, '\\${'); // Интерполяция
 
-        // 2. Создаем код для Genially, который раскодирует это обратно
         const finalSnippet = `
-<iframe id="game-frame" style="width:100%; height:100%; border:none;" allow="autoplay; pointer-lock"></iframe>
+<iframe id="game-frame" style="width:100%; height:100vh; border:none;" allow="autoplay; pointer-lock"></iframe>
 <script>
-// Вставляем закодированную игру
-const b64 = "${base64}";
-
-// Раскодируем обратно в HTML
-const html = decodeURIComponent(escape(atob(b64)));
-
-// Создаем Blob (виртуальный файл)
-const blob = new Blob([html], { type: 'text/html' });
+const exactGameCode = \`${gameCode}\`;
+const blob = new Blob([exactGameCode], { type: 'text/html' });
 const url = URL.createObjectURL(blob);
-
-// Запускаем
 document.getElementById('game-frame').src = url;
 <\/script>
         `.trim();
