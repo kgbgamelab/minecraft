@@ -2,45 +2,32 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Genially Builder (Working Version)</title>
+    <title>Minecraft Editor (Fixed)</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; background: #121212; color: #eee; font-family: 'Roboto', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        /* HEADER */
         header { background: #000; padding: 15px 20px; border-bottom: 3px solid #55ff55; display: flex; justify-content: space-between; align-items: center; }
-        h1 { font-family: 'VT323'; color: #55ff55; margin: 0; font-size: 28px; letter-spacing: 1px; }
-        
-        /* LAYOUT */
+        h1 { font-family: 'VT323'; color: #55ff55; margin: 0; font-size: 28px; }
         .main { display: flex; flex: 1; overflow: hidden; }
         .sidebar { width: 450px; background: #1e1e1e; border-right: 1px solid #333; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
         .preview { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
-        
-        /* IFRAME ПРЕДПРОСМОТРА */
         iframe#preview-frame { width: 100%; height: 100%; border: none; background: #87CEEB; }
-
-        /* ЭЛЕМЕНТЫ УПРАВЛЕНИЯ */
+        
         label { color: #aaa; font-size: 12px; margin-bottom: 5px; display: block; font-weight: bold; }
         input, select { width: 100%; background: #2d2d2d; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 4px; box-sizing: border-box; font-family: 'VT323'; font-size: 18px; margin-bottom: 5px; }
         input:focus { border-color: #55ff55; outline: none; }
-        
         .q-card { background: #252525; padding: 15px; border: 1px solid #444; border-radius: 6px; position: relative; margin-bottom: 10px; }
         .btn-del { position: absolute; top: 10px; right: 10px; background: #d32f2f; color: white; border: none; cursor: pointer; padding: 2px 8px; font-family: 'VT323'; font-size: 16px; border-radius: 3px; }
         .ans-row { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
         .ans-row input[type="radio"] { width: auto; transform: scale(1.5); accent-color: #55ff55; cursor: pointer; }
-        
-        /* КНОПКИ */
         .btn { background: #55ff55; color: #000; border: none; padding: 10px 25px; font-family: 'VT323'; font-size: 22px; cursor: pointer; font-weight: bold; border-radius: 4px; width: 100%; }
         .btn:hover { background: #44ee44; }
         .btn-add { background: transparent; color: #87CEEB; border: 2px dashed #87CEEB; margin-top: 10px; }
         .btn-update { position: absolute; top: 20px; right: 20px; width: auto; z-index: 100; box-shadow: 0 4px 0 #004400; font-size: 18px; }
-
-        /* МОДАЛЬНОЕ ОКНО */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; }
         .code-box { width: 70%; height: 60%; background: #111; color: #55ff55; border: 2px solid #555; padding: 15px; font-family: monospace; resize: none; margin-bottom: 15px; font-size: 12px; }
-        
         footer { background: #000; padding: 10px; text-align: center; font-family: 'VT323'; color: #666; border-top: 1px solid #333; font-size: 14px; }
     </style>
 </head>
@@ -51,7 +38,7 @@
         <img src="https://con.xl.ru/fnfLZuvpAUiDaqDs8d1-2g/images/kcJYv7OsYUSGt5AfGq5jIw.png" height="40">
         <div>
             <h1>MINECRAFT GENIALLY BUILDER</h1>
-            <span style="font-size:12px; color:#888;">РАБОЧИЙ ШАБЛОН (SANDBOX + BLOB)</span>
+            <span style="font-size:12px; color:#888;">FIXED PREVIEW & BLOB EXPORT</span>
         </div>
     </div>
     <button class="btn" style="width: auto;" onclick="generateGeniallyCode()">ПОЛУЧИТЬ КОД</button>
@@ -68,7 +55,6 @@
             <option value="fr">Français</option>
             <option value="zh">Chinese</option>
         </select>
-        
         <div id="q-list"></div>
         <button class="btn btn-add" onclick="addQuestion()">+ ДОБАВИТЬ ВОПРОС</button>
     </div>
@@ -81,21 +67,20 @@
 
 <div id="modal" class="modal">
     <h2 style="color:white; font-family:VT323; font-size: 30px;">КОД ДЛЯ ВСТАВКИ (Insert -> Others)</h2>
-    <p style="color:#aaa; margin-bottom: 10px;">Этот код использует структуру, которая у вас заработала.</p>
     <textarea id="final-code" class="code-box" readonly onclick="this.select()"></textarea>
     <button class="btn" style="width: 200px;" onclick="document.getElementById('modal').style.display='none'">ЗАКРЫТЬ</button>
 </div>
 
-<script id="game-template" type="text/template">
+<textarea id="game-template" style="display:none;">
 <!DOCTYPE html>
 <html lang="{{LANG}}">
 <head>
     <meta charset="UTF-8">
     <title>Minecraft: True Survival</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
         #hud { position: absolute; width: 100%; height: 100%; pointer-events: none; }
@@ -634,75 +619,72 @@ init();
 <\/script>
 </body>
 </html>
-</script>
+</textarea>
 
 <script>
-    // --- ДАННЫЕ РЕДАКТОРА ---
-    let questions = [{ q: "2 + 2 = $4$", a: ["$4$", "$5$", "$6$"], c: 0 }];
+    // --- ДАННЫЕ РЕДАКТОРА ---
+    let questions = [{ q: "2 + 2 = $4$", a: ["$4$", "$5$", "$6$"], c: 0 }];
 
-    function renderList() {
-        const c = document.getElementById('q-list');
-        c.innerHTML = '';
-        questions.forEach((q, i) => {
-            let ansHtml = '';
-            q.a.forEach((ans, ai) => {
-                ansHtml += `
-                <div class="ans-row">
-                    <input type="radio" name="q${i}" ${q.c === ai ? 'checked' : ''} onchange="updQ(${i}, 'c', ${ai})">
-                    <input type="text" value="${ans.replace(/"/g, '&quot;')}" oninput="updQ(${i}, 'a', ${ai}, this.value)" placeholder="Ответ ${ai+1}">
-                </div>`;
-            });
-            c.innerHTML += `
-            <div class="q-card">
-                <button class="btn-del" onclick="delQ(${i})">X</button>
-                <label>ВОПРОС ${i+1}</label>
-                <input type="text" value="${q.q.replace(/"/g, '&quot;')}" oninput="updQ(${i}, 'q', null, this.value)" placeholder="Текст, формула ($...$) или URL">
-                <label style="margin-top:10px;">ВАРИАНТЫ ОТВЕТОВ</label>
-                ${ansHtml}
-            </div>`;
-        });
-    }
+    function renderList() {
+        const c = document.getElementById('q-list');
+        c.innerHTML = '';
+        questions.forEach((q, i) => {
+            let ansHtml = '';
+            q.a.forEach((ans, ai) => {
+                ansHtml += `
+                <div class="ans-row">
+                    <input type="radio" name="q${i}" ${q.c === ai ? 'checked' : ''} onchange="updQ(${i}, 'c', ${ai})">
+                    <input type="text" value="${ans.replace(/"/g, '&quot;')}" oninput="updQ(${i}, 'a', ${ai}, this.value)" placeholder="Ответ ${ai+1}">
+                </div>`;
+            });
+            c.innerHTML += `
+            <div class="q-card">
+                <button class="btn-del" onclick="delQ(${i})">X</button>
+                <label>ВОПРОС ${i+1}</label>
+                <input type="text" value="${q.q.replace(/"/g, '&quot;')}" oninput="updQ(${i}, 'q', null, this.value)" placeholder="Текст, формула ($...$) или URL">
+                <label style="margin-top:10px;">ВАРИАНТЫ ОТВЕТОВ</label>
+                ${ansHtml}
+            </div>`;
+        });
+    }
 
-    function addQuestion() { questions.push({ q: "Новый вопрос", a: ["A", "B", "C"], c: 0 }); renderList(); }
-    function delQ(i) { if(questions.length > 1) { questions.splice(i, 1); renderList(); } else alert("Минимум 1 вопрос!"); }
-    function updQ(i, type, idx, val) {
-        if(type === 'q') questions[i].q = val;
-        if(type === 'c') questions[i].c = idx;
-        if(type === 'a') questions[i].a[idx] = val;
-    }
+    function addQuestion() { questions.push({ q: "Новый вопрос", a: ["A", "B", "C"], c: 0 }); renderList(); }
+    function delQ(i) { if(questions.length > 1) { questions.splice(i, 1); renderList(); } else alert("Минимум 1 вопрос!"); }
+    function updQ(i, type, idx, val) {
+        if(type === 'q') questions[i].q = val;
+        if(type === 'c') questions[i].c = idx;
+        if(type === 'a') questions[i].a[idx] = val;
+    }
 
-    // --- СБОРКА ИГРЫ ---
-    function buildGameString() {
-        const lang = document.getElementById('lang').value;
-        const configStr = JSON.stringify({ lang: lang, questions: questions });
-        // БЕРЕМ КОД ИЗ ШАБЛОНА (СКРЫТЫЙ SCRIPT TAG) - ЭТО ВАЖНО, ОН НЕ ИСПОЛНЯЕТСЯ БРАУЗЕРОМ
-        let code = document.getElementById('game-template').innerHTML;
-        code = code.replace('__LANG__', lang);
-        code = code.replace('__CONFIG__', configStr);
-        return code;
-    }
+    // --- СБОРКА ИГРЫ ---
+    function buildGameString() {
+        const lang = document.getElementById('lang').value;
+        const configStr = JSON.stringify({ lang: lang, questions: questions });
+        // БЕРЕМ КОД ИЗ TEXTAREA - ЭТО ГАРАНТИРУЕТ СОХРАННОСТЬ СПЕЦСИМВОЛОВ
+        let code = document.getElementById('game-template').value;
+        code = code.replace('{{LANG}}', lang);
+        code = code.replace('{{CONFIG}}', configStr);
+        return code;
+    }
 
-    // --- ПРЕДПРОСМОТР (ЧЕРЕЗ BLOB) ---
-    function updatePreview() {
-        const gameHtml = buildGameString();
-        // СОЗДАЕМ BLOB - ЭТО КЛЮЧЕВОЙ МОМЕНТ
-        const blob = new Blob([gameHtml], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        document.getElementById('preview-frame').src = url;
-    }
+    // --- ПРЕДПРОСМОТР (ЧЕРЕЗ BLOB) ---
+    function updatePreview() {
+        const gameHtml = buildGameString();
+        const blob = new Blob([gameHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        document.getElementById('preview-frame').src = url;
+    }
 
-    // --- ГЕНЕРАЦИЯ КОДА ДЛЯ GENIALLY (BLOB METHOD) ---
-    function generateGeniallyCode() {
-        let gameCode = buildGameString();
-        
-        // ЭКРАНИРОВАНИЕ ДЛЯ ВСТАВКИ В JS СТРОКУ
-        // САМОЕ ВАЖНОЕ: Экранируем ${, \, ` чтобы Genially не сломался
-        gameCode = gameCode.replace(/\\/g, '\\\\')  // Экранируем слэши
-                           .replace(/`/g, '\\`')    // Экранируем обратные кавычки
-                           .replace(/\${/g, '\\${'); // Экранируем ${}
+    // --- ГЕНЕРАЦИЯ КОДА ДЛЯ GENIALLY (BLOB METHOD) ---
+    function generateGeniallyCode() {
+        let gameCode = buildGameString();
+        
+        // ЭКРАНИРОВАНИЕ ДЛЯ ВСТАВКИ В ШАБЛОННУЮ СТРОКУ JS (САМОЕ ВАЖНОЕ)
+        gameCode = gameCode.replace(/\\/g, '\\\\')  // Экранируем слэши
+                           .replace(/`/g, '\\`')    // Экранируем обратные кавычки
+                           .replace(/\${/g, '\\${'); // Экранируем интерполяцию
 
-        // Шаблон "Овечки" (ТОЧЬ-В-ТОЧЬ)
-        const finalSnippet = `
+        const finalSnippet = `
 <iframe id="game-frame" style="width:100%; height:100vh; border:none;" allow="autoplay; pointer-lock"></iframe>
 <script>
 const exactGameCode = \`${gameCode}\`;
@@ -710,15 +692,15 @@ const blob = new Blob([exactGameCode], { type: 'text/html' });
 const url = URL.createObjectURL(blob);
 document.getElementById('game-frame').src = url;
 <\/script>
-        `.trim();
+        `.trim();
 
-        document.getElementById('final-code').value = finalSnippet;
-        document.getElementById('modal').style.display = 'flex';
-    }
+        document.getElementById('final-code').value = finalSnippet;
+        document.getElementById('modal').style.display = 'flex';
+    }
 
-    // Запуск
-    renderList();
-    updatePreview();
+    // Запуск
+    renderList();
+    updatePreview();
 </script>
 </body>
 </html>
