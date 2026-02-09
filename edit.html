@@ -2,57 +2,51 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Genially EDITOR</title>
+    <title>Minecraft Editor (Blob Fix)</title>
     <style>
         body { background: #121212; color: #fff; font-family: sans-serif; height: 100vh; margin: 0; display: flex; flex-direction: column; }
-        header { background: #000; padding: 15px; border-bottom: 3px solid #4CAF50; display: flex; justify-content: space-between; align-items: center; }
-        h1 { margin: 0; color: #4CAF50; font-family: monospace; }
-        
+        header { background: #1a1a1a; padding: 15px; border-bottom: 2px solid #4CAF50; display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; color: #4CAF50; font-family: monospace; font-size: 20px; }
         .main { display: flex; flex: 1; overflow: hidden; }
-        
-        /* ЛЕВАЯ ПАНЕЛЬ - РЕДАКТОР */
-        .editor-panel { width: 40%; padding: 20px; overflow-y: auto; border-right: 1px solid #333; background: #1e1e1e; }
-        .q-block { background: #2d2d2d; padding: 15px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #4CAF50; position: relative; }
-        .btn-del { position: absolute; top: 10px; right: 10px; background: #d32f2f; color: white; border: none; cursor: pointer; padding: 2px 8px; }
-        
-        label { display: block; color: #888; font-size: 12px; margin-top: 5px; margin-bottom: 2px; }
-        input[type="text"] { width: 100%; padding: 8px; background: #111; border: 1px solid #444; color: #fff; box-sizing: border-box; }
-        
-        .ans-row { display: flex; gap: 5px; align-items: center; margin-top: 5px; }
-        input[type="radio"] { accent-color: #4CAF50; transform: scale(1.2); cursor: pointer; }
-        
-        .btn-add { width: 100%; padding: 10px; background: transparent; border: 2px dashed #555; color: #888; cursor: pointer; margin-top: 10px; }
-        .btn-add:hover { border-color: #4CAF50; color: #4CAF50; }
-
-        /* ПРАВАЯ ПАНЕЛЬ - КОД */
+        .editor-panel { width: 400px; padding: 20px; overflow-y: auto; background: #1e1e1e; border-right: 1px solid #333; }
         .code-panel { flex: 1; padding: 20px; background: #111; display: flex; flex-direction: column; }
+        
+        .q-block { background: #2d2d2d; padding: 15px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #4CAF50; position: relative; }
+        .btn-del { position: absolute; top: 10px; right: 10px; background: #d32f2f; color: white; border: none; cursor: pointer; }
+        input[type="text"] { width: 100%; padding: 8px; background: #111; border: 1px solid #444; color: #fff; margin-bottom: 5px; box-sizing: border-box; }
+        
         textarea { flex: 1; background: #000; color: #0f0; border: 1px solid #333; padding: 10px; font-family: monospace; resize: none; }
-        .btn-gen { background: #4CAF50; color: black; font-weight: bold; border: none; padding: 15px; font-size: 18px; cursor: pointer; margin-top: 10px; }
+        .btn-gen { background: #4CAF50; color: #000; font-weight: bold; border: none; padding: 15px; font-size: 16px; cursor: pointer; margin-top: 10px; width: 100%; }
         .btn-gen:hover { background: #45a049; }
+        .btn-add { width: 100%; padding: 10px; background: #333; border: 1px dashed #555; color: #aaa; cursor: pointer; }
+        .btn-add:hover { border-color: #4CAF50; color: #4CAF50; }
+        .preview-btn { background: #2196F3; color: white; border: none; padding: 5px 15px; cursor: pointer; font-size: 12px; margin-left: 10px; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>MINECRAFT EDITOR 🛠️</h1>
-    <div style="font-size: 12px; color: #888;">Для вставки: Insert -> Others</div>
+    <div style="display:flex; align-items:center;">
+        <h1>MINECRAFT GENERATOR 🛠️</h1>
+    </div>
+    <div style="font-size: 12px; color: #888;">Fix: Blob URL Method</div>
 </header>
 
 <div class="main">
     <div class="editor-panel">
-        <h3 style="margin-top: 0;">1. Вопросы</h3>
+        <h3>1. Настройка вопросов</h3>
         <div id="questions-container"></div>
-        <button class="btn-add" onclick="addQuestion()">+ ДОБАВИТЬ ВОПРОС</button>
+        <button class="btn-add" onclick="addQuestion()">+ Добавить вопрос</button>
     </div>
 
     <div class="code-panel">
-        <h3 style="margin-top: 0;">2. Итоговый код</h3>
-        <textarea id="output-code" readonly placeholder="Нажми кнопку 'СГЕНЕРИРОВАТЬ КОД' внизу..."></textarea>
-        <button class="btn-gen" onclick="generateCode()">СГЕНЕРИРОВАТЬ КОД</button>
+        <h3>2. Код для Genially</h3>
+        <textarea id="output-code" readonly placeholder="Нажми кнопку внизу..."></textarea>
+        <button class="btn-gen" onclick="generateCode()">СГЕНЕРИРОВАТЬ КОД (BLOB)</button>
     </div>
 </div>
 
-<textarea id="game-engine-template" style="display:none;">
+<textarea id="game-template" style="display:none;">
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -61,200 +55,161 @@
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <style>
     body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
-    #ui-layer { position: absolute; inset: 0; pointer-events: none; }
+    #ui { position: absolute; inset: 0; pointer-events: none; }
     #ch { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 24px; height: 24px; mix-blend-mode: difference; }
     #ch::before { content:''; position:absolute; top:11px; left:0; width:24px; height:2px; background:#fff; }
     #ch::after { content:''; position:absolute; top:0; left:11px; width:2px; height:24px; background:#fff; }
     #q-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 10px 30px; border: 3px solid #fff; color: #ffeb3b; font-size: 28px; text-align: center; }
-    #stats { position: absolute; bottom: 10px; width: 100%; text-align: center; font-size: 24px; color: white; text-shadow: 2px 2px 0 #000; }
+    #stats { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; text-shadow: 2px 2px 0 #000; }
     #hearts { font-size: 30px; letter-spacing: 5px; }
     #slots { display: flex; justify-content: center; gap: 10px; margin-top: 5px; }
     .slot { width: 50px; height: 50px; border: 3px solid #555; background: rgba(0,0,0,0.5); font-size: 30px; display: flex; align-items: center; justify-content: center; }
     .slot.active { border-color: #fff; background: rgba(255,255,255,0.2); transform: scale(1.1); }
-    #overlays { position: absolute; inset: 0; pointer-events: none; }
-    #dmg-ov { position: absolute; inset: 0; background: red; opacity: 0; transition: 0.1s; }
-    #screens { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; flex-direction: column; pointer-events: auto; z-index: 999; }
+    #ov { position: absolute; inset: 0; pointer-events: none; }
+    #dmg { position: absolute; inset: 0; background: red; opacity: 0; transition: 0.1s; }
+    #scr { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; flex-direction: column; pointer-events: auto; z-index: 999; }
     .btn { font-size: 40px; color: #ffff55; cursor: pointer; text-decoration: underline; margin-top: 20px; pointer-events: auto; }
 </style>
 </head>
 <body>
-<div id="overlays"><div id="dmg-ov"></div></div>
-<div id="ui-layer">
-    <div id="q-box">Waiting...</div>
+<div id="ov"><div id="dmg"></div></div>
+<div id="ui">
+    <div id="q-box">...</div>
     <div id="ch"></div>
     <div id="stats">
         <div id="hearts">❤️❤️❤️❤️❤️</div>
         <div id="slots"><div id="s1" class="slot active">🗡️</div><div id="s2" class="slot">🏹</div></div>
     </div>
 </div>
-<div id="screens">
-    <h1 id="screen-title" style="font-size: 80px; color: white; margin: 0;">GAME OVER</h1>
+<div id="scr">
+    <h1 id="ttl" style="font-size: 80px; color: white; margin: 0;">GAME OVER</h1>
     <div class="btn" onclick="location.reload()">RESTART</div>
 </div>
-
 <script>
-    // === ВСТАВКА ВОПРОСОВ ИЗ РЕДАКТОРА ===
-    const CONFIG = {{DATA_JSON}};
-
-    let scene, camera, renderer, weaponGroup;
-    let items=[], targets=[], projectiles=[], particles=[];
-    let p = { hp: 5, score: 0 }, move = {f:0, b:0, l:0, r:0, j:0}, weapon='sword';
-    let qIdx = 0;
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function sfx(type) {
-        if(audioCtx.state==='suspended') audioCtx.resume();
-        const t=audioCtx.currentTime; const o=audioCtx.createOscillator(); const g=audioCtx.createGain();
-        o.connect(g); g.connect(audioCtx.destination);
-        if(type==='hit'){ o.type='square'; o.frequency.setValueAtTime(150,t); g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.1); o.start(t); o.stop(t+0.1); }
-        if(type==='bow'){ o.type='triangle'; o.frequency.setValueAtTime(600,t); g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.3); o.start(t); o.stop(t+0.3); }
-        if(type==='win'){ o.type='sine'; o.frequency.setValueAtTime(800,t); o.frequency.linearRampToValueAtTime(1200,t+0.1); g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.5); o.start(t); o.stop(t+0.5); }
-        if(type==='dmg'){ o.type='sawtooth'; o.frequency.setValueAtTime(100,t); g.gain.setValueAtTime(0.5,t); g.gain.linearRampToValueAtTime(0,t+0.2); o.start(t); o.stop(t+0.2); }
+    const DATA = {{DATA}};
+    let sc, cam, ren, wGrp;
+    let items=[], tg=[], proj=[], p = { hp: 5 }, mv = {f:0, b:0, l:0, r:0, j:0}, wp='s';
+    let qI = 0;
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function sfx(t) {
+        if(ac.state==='suspended') ac.resume();
+        const tm=ac.currentTime; const o=ac.createOscillator(); const g=ac.createGain();
+        o.connect(g); g.connect(ac.destination);
+        if(t==='h'){ o.type='square'; o.frequency.setValueAtTime(150,tm); g.gain.setValueAtTime(0.2,tm); g.gain.exponentialRampToValueAtTime(0.01,tm+0.1); o.start(tm); o.stop(tm+0.1); }
+        if(t==='b'){ o.type='triangle'; o.frequency.setValueAtTime(600,tm); g.gain.setValueAtTime(0.2,tm); g.gain.exponentialRampToValueAtTime(0.01,tm+0.3); o.start(tm); o.stop(tm+0.3); }
+        if(t==='w'){ o.type='sine'; o.frequency.setValueAtTime(800,tm); o.frequency.linearRampToValueAtTime(1200,tm+0.1); g.gain.setValueAtTime(0.2,tm); g.gain.exponentialRampToValueAtTime(0.01,tm+0.5); o.start(tm); o.stop(tm+0.5); }
+        if(t==='d'){ o.type='sawtooth'; o.frequency.setValueAtTime(100,tm); g.gain.setValueAtTime(0.5,tm); g.gain.linearRampToValueAtTime(0,tm+0.2); o.start(tm); o.stop(tm+0.2); }
     }
 
-    function tex(c) {
-        const cv=document.createElement('canvas'); cv.width=64; cv.height=64; const x=cv.getContext('2d');
+    function tx(c) {
+        const el=document.createElement('canvas'); el.width=64; el.height=64; const x=el.getContext('2d');
         x.fillStyle=c; x.fillRect(0,0,64,64);
         x.fillStyle='rgba(0,0,0,0.1)'; for(let i=0;i<50;i++) x.fillRect(Math.random()*64,Math.random()*64,4,4);
-        const t=new THREE.CanvasTexture(cv); t.magFilter=THREE.NearestFilter; return t;
+        const t=new THREE.CanvasTexture(el); t.magFilter=THREE.NearestFilter; return t;
     }
-    const mats = { grass: new THREE.MeshLambertMaterial({map:tex('#4a8f3a')}), wood: new THREE.MeshLambertMaterial({map:tex('#8B4513')}) };
+    const mat = { g: new THREE.MeshLambertMaterial({map:tx('#4a8f3a')}), w: new THREE.MeshLambertMaterial({map:tx('#8B4513')}) };
 
     function init() {
-        scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB);
-        scene.fog = new THREE.Fog(0x87CEEB, 15, 60);
-        camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100);
-        camera.rotation.order = 'YXZ';
+        sc = new THREE.Scene(); sc.background = new THREE.Color(0x87CEEB); sc.fog = new THREE.Fog(0x87CEEB, 15, 60);
+        cam = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100); cam.rotation.order = 'YXZ';
+        ren = new THREE.WebGLRenderer({antialias:false}); ren.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(ren.domElement);
         
-        renderer = new THREE.WebGLRenderer({antialias:false});
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+        const l = new THREE.DirectionalLight(0xffffff, 0.8); l.position.set(20,50,20); sc.add(l);
+        sc.add(new THREE.AmbientLight(0xffffff, 0.6));
         
-        const light = new THREE.DirectionalLight(0xffffff, 0.8); light.position.set(20,50,20); scene.add(light);
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-        
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(200,200), mats.grass);
-        floor.rotation.x = -Math.PI/2; scene.add(floor);
-        
-        // Weapon
-        weaponGroup = new THREE.Group(); scene.add(weaponGroup);
-        const wMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.6), new THREE.MeshLambertMaterial({color:0x333}));
-        wMesh.position.set(0.4, -0.4, -0.6); weaponGroup.add(wMesh);
+        const fl = new THREE.Mesh(new THREE.PlaneGeometry(200,200), mat.g); fl.rotation.x = -Math.PI/2; sc.add(fl);
+        wGrp = new THREE.Group(); sc.add(wGrp);
+        const wm = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.6), new THREE.MeshLambertMaterial({color:0x333}));
+        wm.position.set(0.4, -0.4, -0.6); wGrp.add(wm);
 
-        // Decor
-        for(let i=0;i<3;i++) {
-            const h=new THREE.Mesh(new THREE.BoxGeometry(6,4,6), mats.wood);
-            h.position.set(Math.random()*40-20, 2, Math.random()*40-20); scene.add(h);
-        }
+        for(let i=0;i<3;i++) { const h=new THREE.Mesh(new THREE.BoxGeometry(6,4,6), mat.w); h.position.set(Math.random()*40-20, 2, Math.random()*40-20); sc.add(h); }
 
-        loadQ();
-        animate();
+        lQ(); ani();
         
         document.onkeydown = e => {
-            if(e.code==='KeyW') move.f=1; if(e.code==='KeyS') move.b=1; if(e.code==='KeyA') move.l=1; if(e.code==='KeyD') move.r=1; if(e.code==='Space') move.j=1;
-            if(e.key==='1') { weapon='sword'; document.getElementById('s1').classList.add('active'); document.getElementById('s2').classList.remove('active'); }
-            if(e.key==='2') { weapon='bow'; document.getElementById('s2').classList.add('active'); document.getElementById('s1').classList.remove('active'); }
+            if(e.code==='KeyW') mv.f=1; if(e.code==='KeyS') mv.b=1; if(e.code==='KeyA') mv.l=1; if(e.code==='KeyD') mv.r=1; if(e.code==='Space') mv.j=1;
+            if(e.key==='1') { wp='s'; document.getElementById('s1').classList.add('active'); document.getElementById('s2').classList.remove('active'); }
+            if(e.key==='2') { wp='b'; document.getElementById('s2').classList.add('active'); document.getElementById('s1').classList.remove('active'); }
         };
-        document.onkeyup = e => { if(e.code==='KeyW') move.f=0; if(e.code==='KeyS') move.b=0; if(e.code==='KeyA') move.l=0; if(e.code==='KeyD') move.r=0; if(e.code==='Space') move.j=0; };
+        document.onkeyup = e => { if(e.code==='KeyW') mv.f=0; if(e.code==='KeyS') mv.b=0; if(e.code==='KeyA') mv.l=0; if(e.code==='KeyD') mv.r=0; if(e.code==='Space') mv.j=0; };
         
         document.onmousedown = () => {
             if(!document.pointerLockElement) { document.body.requestPointerLock(); return; }
             if(p.hp<=0) return;
-            sfx(weapon==='sword'?'hit':'bow');
-            if(weapon==='sword') {
-                weaponGroup.rotation.x = -1; setTimeout(()=>weaponGroup.rotation.x=0, 150);
-                const r = new THREE.Raycaster(); r.setFromCamera(new THREE.Vector2(0,0), camera);
-                const hits = r.intersectObjects(targets, true);
-                if(hits.length>0 && hits[0].distance < 4) checkHit(hits[0].object);
+            sfx(wp==='s'?'h':'b');
+            if(wp==='s') {
+                wGrp.rotation.x = -1; setTimeout(()=>wGrp.rotation.x=0, 150);
+                const r = new THREE.Raycaster(); r.setFromCamera(new THREE.Vector2(0,0), cam);
+                const h = r.intersectObjects(tg, true);
+                if(h.length>0 && h[0].distance < 4) hit(h[0].object);
             } else {
                 const a = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,1), new THREE.MeshBasicMaterial({color:0xffffff}));
-                a.position.copy(camera.position); a.quaternion.copy(camera.quaternion);
-                a.userData.vel = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).multiplyScalar(1);
-                scene.add(a); projectiles.push(a);
+                a.position.copy(cam.position); a.quaternion.copy(cam.quaternion);
+                a.userData.v = new THREE.Vector3(0,0,-1).applyQuaternion(cam.quaternion).multiplyScalar(0.8);
+                sc.add(a); proj.push(a);
             }
         };
         document.onmousemove = e => {
             if(document.pointerLockElement) {
-                camera.rotation.y -= e.movementX*0.003;
-                camera.rotation.x -= e.movementY*0.003;
-                camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+                cam.rotation.y -= e.movementX*0.003; cam.rotation.x -= e.movementY*0.003;
+                cam.rotation.x = Math.max(-1.5, Math.min(1.5, cam.rotation.x));
             }
         };
+        window.onresize = () => { cam.aspect = window.innerWidth/window.innerHeight; cam.updateProjectionMatrix(); ren.setSize(window.innerWidth, window.innerHeight); };
     }
 
-    function checkHit(obj) {
-        let root = obj; while(root.parent && root.parent.type !== 'Scene') root = root.parent;
-        if(root.userData.ok) {
-            sfx('win'); qIdx++; loadQ();
-        } else {
-            sfx('dmg'); p.hp--; updateHearts();
-            const ov=document.getElementById('dmg-ov'); ov.style.opacity=0.6; setTimeout(()=>ov.style.opacity=0, 100);
+    function hit(o) {
+        let r = o; while(r.parent && r.parent.type !== 'Scene') r = r.parent;
+        if(r.userData.ok) { sfx('w'); qI++; lQ(); } else {
+            sfx('d'); p.hp--; document.getElementById('hearts').innerText = "❤️".repeat(p.hp);
+            const ov=document.getElementById('dmg'); ov.style.opacity=0.6; setTimeout(()=>ov.style.opacity=0, 100);
             if(p.hp<=0) end(false);
         }
     }
-
-    function updateHearts() { document.getElementById('hearts').innerText = "❤️".repeat(p.hp); }
     
-    function end(win) {
+    function end(w) {
         document.exitPointerLock();
-        const s = document.getElementById('screens'); s.style.display='flex';
-        const t = document.getElementById('screen-title');
-        t.innerText = win ? "YOU WIN!" : "GAME OVER";
-        t.style.color = win ? "#55ff55" : "#ff5555";
+        const s = document.getElementById('scr'); s.style.display='flex';
+        const t = document.getElementById('ttl'); t.innerText = w ? "YOU WIN!" : "GAME OVER"; t.style.color = w ? "#55ff55" : "#ff5555";
     }
 
-    function loadQ() {
-        if(qIdx >= CONFIG.length) { end(true); return; }
-        targets.forEach(t=>scene.remove(t)); targets=[];
-        const q = CONFIG[qIdx];
-        document.getElementById('q-box').innerText = q.q;
-        
-        q.a.forEach((ans, i) => {
+    function lQ() {
+        if(qI >= DATA.length) { end(true); return; }
+        tg.forEach(t=>sc.remove(t)); tg=[];
+        const q = DATA[qI]; document.getElementById('q-box').innerText = q.q;
+        q.a.forEach((an, i) => {
             const g = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(1,2,1), new THREE.MeshLambertMaterial({color:0x3C50C4})); body.position.y=1;
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8), new THREE.MeshLambertMaterial({map:tex('#ffccaa')})); head.position.y=2.4;
-            
-            const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const ctx=cv.getContext('2d');
-            ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,256,64); ctx.strokeStyle='white'; ctx.strokeRect(2,2,252,60);
-            ctx.fillStyle='white'; ctx.font='30px Arial'; ctx.textAlign='center'; ctx.fillText(ans,128,42);
+            const b = new THREE.Mesh(new THREE.BoxGeometry(1,2,1), new THREE.MeshLambertMaterial({color:0x3C50C4})); b.position.y=1;
+            const h = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8), new THREE.MeshLambertMaterial({map:mat.g})); h.position.y=2.4;
+            const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const cx=cv.getContext('2d');
+            cx.fillStyle='rgba(0,0,0,0.6)'; cx.fillRect(0,0,256,64); cx.strokeStyle='white'; cx.strokeRect(2,2,252,60);
+            cx.fillStyle='white'; cx.font='30px Arial'; cx.textAlign='center'; cx.fillText(an,128,42);
             const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv)})); sp.position.y=3.6; sp.scale.set(3,0.75,1);
-            
-            g.add(body,head,sp);
-            const ang = (i/q.a.length)*Math.PI*2;
-            g.position.set(Math.cos(ang)*15, 0, Math.sin(ang)*15); g.lookAt(camera.position);
-            g.userData = { ok: i===q.c };
-            scene.add(g); targets.push(g);
+            g.add(b,h,sp);
+            const ag = (i/q.a.length)*Math.PI*2; g.position.set(Math.cos(ag)*15, 0, Math.sin(ag)*15); g.lookAt(cam.position);
+            g.userData = { ok: i===q.c }; sc.add(g); tg.push(g);
         });
     }
 
-    function animate() {
-        requestAnimationFrame(animate);
-        let vy = p.vel || 0;
-        if(move.j && camera.position.y<=1.7) vy=0.2;
-        vy -= 0.01;
-        
+    function ani() {
+        requestAnimationFrame(ani);
+        let vy = p.v || 0; if(mv.j && cam.position.y<=1.7) vy=0.2; vy -= 0.01;
         const d = new THREE.Vector3();
-        const f = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); f.y=0; f.normalize();
-        const r = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); r.y=0; r.normalize();
-        if(move.f) d.add(f); if(move.b) d.sub(f); if(move.l) d.sub(r); if(move.r) d.add(r);
-        camera.position.add(d.normalize().multiplyScalar(0.2));
-        camera.position.y += vy;
-        if(camera.position.y < 1.7) { camera.position.y=1.7; vy=0; }
-        p.vel = vy;
-
-        weaponGroup.position.copy(camera.position); weaponGroup.quaternion.copy(camera.quaternion);
-        weaponGroup.translateX(0.4); weaponGroup.translateY(-0.4); weaponGroup.translateZ(-0.6);
-
-        // Arrows
-        for(let i=projectiles.length-1; i>=0; i--) {
-            const a=projectiles[i]; a.position.add(a.userData.vel);
-            let hit=false;
-            targets.forEach(t => { if(t.position.distanceTo(a.position)<1.5) { checkHit(t); hit=true; } });
-            if(hit || a.position.distanceTo(camera.position)>50) { scene.remove(a); projectiles.splice(i,1); }
+        const f = new THREE.Vector3(0,0,-1).applyQuaternion(cam.quaternion); f.y=0; f.normalize();
+        const r = new THREE.Vector3(1,0,0).applyQuaternion(cam.quaternion); r.y=0; r.normalize();
+        if(mv.f) d.add(f); if(mv.b) d.sub(f); if(mv.l) d.sub(r); if(mv.r) d.add(r);
+        cam.position.add(d.normalize().multiplyScalar(0.2));
+        cam.position.y += vy; if(cam.position.y < 1.7) { cam.position.y=1.7; vy=0; } p.v = vy;
+        wGrp.position.copy(cam.position); wGrp.quaternion.copy(cam.quaternion);
+        wGrp.translateX(0.4); wGrp.translateY(-0.4); wGrp.translateZ(-0.6);
+        for(let i=proj.length-1; i>=0; i--) {
+            const a=proj[i]; a.position.add(a.userData.v);
+            let h=false; tg.forEach(t => { if(t.position.distanceTo(a.position)<1.5) { hit(t); h=true; } });
+            if(h || a.position.distanceTo(cam.position)>50) { sc.remove(a); proj.splice(i,1); }
         }
-        
-        targets.forEach(t=>t.lookAt(camera.position));
-        renderer.render(scene, camera);
+        tg.forEach(t=>t.lookAt(cam.position)); ren.render(sc, cam);
     }
     init();
 </script>
@@ -266,63 +221,65 @@
     let questions = [{ q: "2 + 2 = ?", a: ["3", "4", "5"], c: 1 }];
 
     function renderList() {
-        const container = document.getElementById('questions-container');
-        container.innerHTML = '';
+        const c = document.getElementById('questions-container'); c.innerHTML = '';
         questions.forEach((q, i) => {
-            let ansHtml = '';
+            let ah = '';
             q.a.forEach((ans, ai) => {
-                ansHtml += `
-                <div class="ans-row">
-                    <input type="radio" name="q${i}" ${q.c===ai ? 'checked' : ''} onchange="updateQ(${i}, 'c', ${ai})">
-                    <input type="text" value="${ans.replace(/"/g, '&quot;')}" oninput="updateQ(${i}, 'a', ${ai}, this.value)" placeholder="Ответ ${ai+1}">
+                ah += `<div style="display:flex; gap:5px; margin-top:5px;">
+                    <input type="radio" name="q${i}" ${q.c===ai ? 'checked' : ''} onchange="updQ(${i},'c',${ai})">
+                    <input type="text" value="${ans.replace(/"/g,'&quot;')}" oninput="updQ(${i},'a',${ai},this.value)">
                 </div>`;
             });
-            
-            container.innerHTML += `
-            <div class="q-block">
+            c.innerHTML += `<div class="q-block">
                 <button class="btn-del" onclick="delQ(${i})">X</button>
-                <label>Текст вопроса:</label>
-                <input type="text" value="${q.q.replace(/"/g, '&quot;')}" oninput="updateQ(${i}, 'q', null, this.value)">
-                <label>Варианты ответов:</label>
-                ${ansHtml}
+                <label>Вопрос:</label><input type="text" value="${q.q.replace(/"/g,'&quot;')}" oninput="updQ(${i},'q',null,this.value)">
+                <label>Ответы:</label>${ah}
             </div>`;
         });
     }
 
     function addQuestion() { questions.push({q:"", a:["","",""], c:0}); renderList(); }
     function delQ(i) { if(questions.length > 1) { questions.splice(i,1); renderList(); } }
-    function updateQ(i, type, idx, val) {
-        if(type==='q') questions[i].q = val;
-        if(type==='c') questions[i].c = idx;
-        if(type==='a') questions[i].a[idx] = val;
+    function updQ(i, k, idx, v) { 
+        if(k==='q') questions[i].q=v; 
+        if(k==='c') questions[i].c=idx; 
+        if(k==='a') questions[i].a[idx]=v; 
     }
 
     function generateCode() {
-        // 1. Берем шаблон игры
-        let gameCode = document.getElementById('game-engine-template').value;
+        // 1. Берем код игры
+        let gameCode = document.getElementById('game-template').value;
+        // 2. Вставляем вопросы
+        gameCode = gameCode.replace('{{DATA}}', JSON.stringify(questions));
         
-        // 2. Вставляем в него вопросы из редактора
-        gameCode = gameCode.replace('{{DATA_JSON}}', JSON.stringify(questions));
-        
-        // 3. Создаем "Безопасный загрузчик" (Data URI Iframe)
-        // Это тот самый трюк, который чинит черный экран
-        const finalSnippet = `
-<div id="game-root" style="width:100%; height:100%; background:#000;"></div>
+        // 3. СОЗДАЕМ ЗАГРУЗЧИК ЧЕРЕЗ BLOB (Решение проблемы CONTENT NOT FOUND)
+        // Мы упаковываем весь HTML в JSON-строку, чтобы безопасно передать в скрипт
+        const safeGameString = JSON.stringify(gameCode);
+
+        const loaderCode = `
+<div id="game-container" style="width: 100%; height: 100%; overflow: hidden;"></div>
 <script>
 (function() {
-    var c = document.getElementById('game-root');
-    var i = document.createElement('iframe');
-    i.style.cssText = "width:100%; height:100%; border:none;";
-    i.allow = "autoplay; fullscreen; pointer-lock;";
-    // Кодируем игру в URL
-    var code = ${JSON.stringify(gameCode)};
-    i.src = "data:text/html;charset=utf-8," + encodeURIComponent(code);
-    c.appendChild(i);
+    // 1. Получаем код игры как строку
+    var htmlContent = ${safeGameString};
+    
+    // 2. Создаем Blob (виртуальный файл в памяти)
+    var blob = new Blob([htmlContent], { type: 'text/html' });
+    var url = URL.createObjectURL(blob);
+    
+    // 3. Создаем iframe и назначаем ему URL
+    var iframe = document.createElement('iframe');
+    iframe.style.cssText = "width:100%; height:100%; border:none;";
+    iframe.allow = "autoplay; fullscreen; pointer-lock;";
+    iframe.src = url;
+    
+    // 4. Вставляем
+    document.getElementById('game-container').appendChild(iframe);
 })();
 <\/script>
 `.trim();
 
-        document.getElementById('output-code').value = finalSnippet;
+        document.getElementById('output-code').value = loaderCode;
     }
 
     renderList();
