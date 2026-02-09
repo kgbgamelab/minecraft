@@ -2,469 +2,331 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Genially Minecraft Editor: Ultimate</title>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <title>Minecraft Generator for Genially</title>
     <style>
-        /* Стили РЕДАКТОРА (Темная тема) */
-        body { margin: 0; background: #1a1a1a; color: #ddd; font-family: 'Roboto', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        header { background: #000; padding: 15px; border-bottom: 4px solid #4CAF50; display: flex; justify-content: space-between; align-items: center; }
-        h1 { font-family: 'VT323'; color: #4CAF50; margin: 0; font-size: 36px; letter-spacing: 2px; }
-        
-        .workspace { display: flex; flex: 1; height: 100%; overflow: hidden; }
-        
-        /* Левая панель настроек */
-        .sidebar { width: 400px; background: #252525; padding: 20px; overflow-y: auto; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; }
-        .preview-area { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
-        
-        label { color: #888; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; display: block; }
-        input, select, textarea { width: 100%; background: #333; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 4px; font-family: 'VT323'; font-size: 20px; box-sizing: border-box; }
-        input:focus { border-color: #4CAF50; outline: none; }
-        
-        .q-card { background: #303030; padding: 15px; border-radius: 6px; border-left: 4px solid #4CAF50; position: relative; animation: slideIn 0.3s; }
-        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        
-        .btn-del { position: absolute; top: 10px; right: 10px; background: #ff4444; color: white; border: none; width: 24px; height: 24px; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .ans-row { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
-        .ans-row input[type="radio"] { width: 20px; height: 20px; accent-color: #4CAF50; cursor: pointer; }
-        
-        .btn { background: #4CAF50; color: #000; border: none; padding: 12px; font-family: 'VT323'; font-size: 24px; cursor: pointer; width: 100%; border-radius: 4px; text-transform: uppercase; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 0 #2E7D32; }
-        .btn:active { transform: translateY(4px); box-shadow: none; }
-        .btn-add { background: transparent; border: 2px dashed #555; color: #888; box-shadow: none; }
-        .btn-add:hover { border-color: #4CAF50; color: #4CAF50; }
-
-        /* Модальное окно с кодом */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; }
-        .code-area { width: 80%; height: 60%; background: #111; color: #4CAF50; border: 1px solid #333; padding: 20px; font-family: monospace; font-size: 12px; resize: none; }
-        
-        iframe { border: none; width: 100%; height: 100%; }
+        body { background: #111; color: #eee; font-family: sans-serif; padding: 20px; display: flex; gap: 20px; height: 90vh; }
+        .col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        textarea { background: #222; color: #0f0; border: 1px solid #444; padding: 10px; font-family: monospace; resize: none; flex: 1; }
+        input { background: #333; color: white; border: 1px solid #555; padding: 5px; width: 100%; box-sizing: border-box; }
+        button { background: #4CAF50; color: white; border: none; padding: 15px; font-size: 18px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #45a049; }
+        .q-block { background: #222; padding: 10px; border-left: 3px solid #4CAF50; margin-bottom: 10px; }
+        h2 { margin: 0 0 10px 0; color: #4CAF50; }
+        label { font-size: 12px; color: #aaa; display: block; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<header>
-    <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:30px;">🟩</span>
-        <h1>MINECRAFT GENIALLY BUILDER</h1>
-    </div>
-    <div style="display:flex; gap:10px;">
-        <button class="btn" style="width: auto; background: #2196F3; box-shadow: 0 4px 0 #0D47A1;" onclick="updatePreview()">🔄 ОБНОВИТЬ ПРЕВЬЮ</button>
-        <button class="btn" style="width: auto;" onclick="generateCode()">🚀 ПОЛУЧИТЬ КОД</button>
-    </div>
-</header>
-
-<div class="workspace">
-    <div class="sidebar">
-        <div>
-            <label>Язык интерфейса</label>
-            <select id="lang">
-                <option value="ru">Русский</option>
-                <option value="en">English</option>
-            </select>
-        </div>
-        <div id="questions-container"></div>
-        <button class="btn btn-add" onclick="addQuestion()">+ ДОБАВИТЬ ВОПРОС</button>
-    </div>
-    
-    <div class="preview-area">
-        <iframe id="preview-frame"></iframe>
-    </div>
+<div class="col" style="flex: 0 0 400px; overflow-y: auto;">
+    <h2>1. Настройка вопросов</h2>
+    <div id="questions-list"></div>
+    <button onclick="addQuestion()" style="background: #333; border: 1px dashed #777;">+ Добавить вопрос</button>
+    <button onclick="generateFinalCode()">2. СГЕНЕРИРОВАТЬ КОД >></button>
 </div>
 
-<div id="modal" class="modal">
-    <h2 style="color: white; font-family: 'VT323'; margin-bottom: 10px;">ВСТАВЬТЕ ЭТОТ КОД В GENIALLY (Insert -> Others)</h2>
-    <textarea id="final-code" class="code-area" readonly onclick="this.select()"></textarea>
-    <button class="btn" style="width: 200px; margin-top: 20px;" onclick="document.getElementById('modal').style.display='none'">ЗАКРЫТЬ</button>
+<div class="col">
+    <h2>3. Код для Genially (Insert -> Others)</h2>
+    <textarea id="output-code" readonly placeholder="Здесь появится код. Нажми кнопку слева."></textarea>
+    <button onclick="copyCode()" style="background: #2196F3;">КОПИРОВАТЬ В БУФЕР</button>
 </div>
 
-<script type="text/template" id="game-source">
+<script type="text/template" id="game-template">
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Minecraft Ed</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
-<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"><\/script>
 <style>
-    body { margin: 0; overflow: hidden; font-family: 'VT323', monospace; user-select: none; }
-    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    
-    /* HUD Elements */
-    #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); }
-    #crosshair::before, #crosshair::after { content:''; position: absolute; background: rgba(255,255,255,0.8); }
-    #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
-    #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
-    
-    #hotbar { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 4px; }
-    .slot { width: 50px; height: 50px; border: 3px solid #888; background: #555; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; transition: 0.1s; }
-    .slot.active { border-color: white; transform: scale(1.1); background: #777; }
-    
-    #hearts { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
-    .heart { width: 24px; height: 24px; background: red; border: 2px solid black; transform: rotate(45deg); }
-    .heart.lost { background: #333; border-color: #555; }
-    
-    #quest-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); border: 4px solid white; padding: 15px 30px; text-align: center; color: white; min-width: 300px; }
-    #q-text { font-size: 32px; color: #ffff55; text-shadow: 2px 2px 0 #000; }
-    
-    #msg { position: absolute; top: 40%; width: 100%; text-align: center; font-size: 40px; color: #ff5555; text-shadow: 2px 2px 0 black; opacity: 0; transition: opacity 0.5s; }
-    
-    #game-over { display: none; position: absolute; inset: 0; background: rgba(50,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; }
-    .btn-restart { font-size: 40px; color: white; cursor: pointer; text-decoration: underline; pointer-events: auto; }
-    
-    /* Canvas Overlay for Damage */
-    #damage-flash { position: absolute; inset: 0; background: red; opacity: 0; transition: opacity 0.1s; }
+    body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; user-select: none; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #ui { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+    #crosshair { position: absolute; top:50%; left:50%; width:20px; height:20px; transform:translate(-50%,-50%); }
+    #crosshair::before, #crosshair::after { content:''; position:absolute; background:rgba(255,255,255,0.8); }
+    #crosshair::before { top:9px; left:0; width:20px; height:2px; }
+    #crosshair::after { top:0; left:9px; width:2px; height:20px; }
+    #quest-box { position: absolute; top:20px; width: 100%; text-align: center; }
+    #q-text { background: rgba(0,0,0,0.7); color: #ffeb3b; padding: 10px 20px; font-size: 24px; border: 2px solid white; display: inline-block; }
+    #hearts { position: absolute; bottom: 20px; left: 20px; font-size: 30px; }
+    #msg { position: absolute; top: 40%; width: 100%; text-align: center; font-size: 60px; font-weight: bold; opacity: 0; transition: opacity 0.5s; text-shadow: 2px 2px 0 #000; }
+    #overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; pointer-events: auto; }
+    .btn { background: #4CAF50; color: white; padding: 15px 30px; font-size: 24px; border: none; cursor: pointer; pointer-events: auto; margin-top: 20px; text-transform: uppercase; }
+    .btn:hover { background: #45a049; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
 </head>
 <body>
-<div id="damage-flash"></div>
-<div id="ui-layer">
+<div id="ui">
     <div id="quest-box"><div id="q-text">Загрузка...</div></div>
-    <div id="msg"></div>
     <div id="crosshair"></div>
-    <div id="hearts"></div>
-    <div id="hotbar">
-        <div class="slot active" id="slot1">🗡️</div>
-        <div class="slot" id="slot2">🏹</div>
-    </div>
+    <div id="hearts">❤️❤️❤️❤️❤️</div>
+    <div id="msg"></div>
 </div>
 
-<div id="game-over">
-    <h1 style="color: #ff5555; font-size: 80px; margin: 0; text-shadow: 4px 4px 0 #000;">GAME OVER</h1>
-    <div class="btn-restart" onclick="location.reload()">RESPAWN</div>
+<div id="overlay">
+    <h1 id="title" style="color:white; font-size: 40px;">MINECRAFT QUIZ</h1>
+    <p style="color:#aaa;">Кликни, чтобы начать. Используй мышь для обзора.</p>
+    <button class="btn" onclick="startGame()">ИГРАТЬ</button>
 </div>
 
 <script>
-    // --- КОНФИГУРАЦИЯ ---
-    const config = __CONFIG__;
+    // === ДАННЫЕ (ВСТАВЛЯЮТСЯ АВТОМАТИЧЕСКИ) ===
+    const QUESTIONS = __DATA__;
     
-    // --- THREE.JS VARS ---
-    let scene, camera, renderer;
-    let player = { hp: 5, score: 0, vel: new THREE.Vector3(), onGround: false };
-    let move = { fwd:0, bwd:0, left:0, right:0, jump:0 };
-    let weapon = 'sword'; // sword, bow
-    let targets = [], particles = [], arrows = [];
-    let currentQ = 0;
+    let scene, camera, renderer, clock;
+    let targets = [], particles = [];
+    let state = { hp: 5, qIdx: 0, active: false };
     
-    // --- AUDIO SYNTH ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playSound(type) {
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        const now = audioCtx.currentTime;
-        
-        if(type === 'hit') { // Удар
-            osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(40, now+0.1);
-            gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.1);
-            osc.start(now); osc.stop(now+0.1);
-        } else if (type === 'shoot') { // Выстрел
-            osc.type = 'triangle'; osc.frequency.setValueAtTime(600, now); osc.frequency.exponentialRampToValueAtTime(100, now+0.3);
-            gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.3);
-            osc.start(now); osc.stop(now+0.3);
-        } else if (type === 'coin') { // Правильный ответ
-            osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.setValueAtTime(1200, now+0.1);
-            gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.5);
-            osc.start(now); osc.stop(now+0.5);
-        } else if (type === 'damage') { // Получение урона
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); 
-            gain.gain.setValueAtTime(0.5, now); gain.gain.linearRampToValueAtTime(0, now+0.2);
-            osc.start(now); osc.stop(now+0.2);
-        }
+    // Аудио (синтезатор)
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep(type) {
+        if(actx.state === 'suspended') actx.resume();
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.connect(gain); gain.connect(actx.destination);
+        const t = actx.currentTime;
+        if(type==='hit') { osc.type='square'; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(40, t+0.1); gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.1); osc.start(t); osc.stop(t+0.1); }
+        if(type==='win') { osc.type='sine'; osc.frequency.setValueAtTime(600, t); osc.frequency.setValueAtTime(900, t+0.1); gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.01, t+0.3); osc.start(t); osc.stop(t+0.3); }
+        if(type==='lose') { osc.type='sawtooth'; osc.frequency.setValueAtTime(100, t); gain.gain.setValueAtTime(0.2, t); gain.gain.linearRampToValueAtTime(0, t+0.3); osc.start(t); osc.stop(t+0.3); }
     }
 
-    // --- TEXTURE GEN ---
-    function getTex(col, type) {
-        const c = document.createElement('canvas'); c.width=64; c.height=64; const ctx=c.getContext('2d');
-        ctx.fillStyle = col; ctx.fillRect(0,0,64,64);
+    // Текстуры (процедурные)
+    function createTex(color) {
+        const c = document.createElement('canvas'); c.width=64; c.height=64;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = color; ctx.fillRect(0,0,64,64);
         ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        for(let i=0; i<64; i++) ctx.fillRect(Math.random()*64, Math.random()*64, 4, 4);
-        if(type === 'wood') { ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(10,0,10,64); ctx.fillRect(40,0,10,64); }
-        if(type === 'brick') { ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,30,64,4); ctx.fillRect(30,0,4,64); }
+        for(let i=0; i<30; i++) ctx.fillRect(Math.random()*64, Math.random()*64, 4, 4);
         const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; return t;
     }
     const mats = {
-        grass: new THREE.MeshLambertMaterial({ map: getTex('#5da34b') }),
-        wood: new THREE.MeshLambertMaterial({ map: getTex('#8B4513', 'wood') }),
-        dirt: new THREE.MeshLambertMaterial({ map: getTex('#5d4037') }),
-        stone: new THREE.MeshLambertMaterial({ map: getTex('#757575', 'brick') }),
+        grass: new THREE.MeshLambertMaterial({ map: createTex('#5da34b') }),
+        dirt: new THREE.MeshLambertMaterial({ map: createTex('#5d4037') }),
+        wood: new THREE.MeshLambertMaterial({ map: createTex('#8B4513') }),
         sky: new THREE.Color(0x87CEEB)
     };
 
     function init() {
-        scene = new THREE.Scene(); scene.background = mats.sky; scene.fog = new THREE.Fog(mats.sky, 20, 60);
+        scene = new THREE.Scene(); scene.background = mats.sky; 
+        scene.fog = new THREE.Fog(mats.sky, 10, 50);
         camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
-        camera.rotation.order = 'YXZ';
         
         renderer = new THREE.WebGLRenderer({antialias:false});
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
         
-        // Light
-        const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(20,50,30); sun.castShadow=true; scene.add(sun);
+        const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(20,50,30); scene.add(sun);
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
         
-        // World
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(200,200), mats.grass);
-        floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+        // Пол
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100,100), mats.grass);
+        floor.rotation.x = -Math.PI/2; scene.add(floor);
         
-        // House
-        createStructure(0, 0, 10);
+        // Стены (декор)
+        for(let i=0; i<20; i++) {
+            const h = new THREE.Mesh(new THREE.BoxGeometry(1, Math.random()*3+1, 1), mats.wood);
+            h.position.set(Math.random()*40-20, h.geometry.parameters.height/2, Math.random()*40-20);
+            if(h.position.length() > 5) scene.add(h);
+        }
+
+        clock = new THREE.Clock();
+        animate();
         
-        // Events
-        document.addEventListener('keydown', onKey); document.addEventListener('keyup', onKey);
-        document.addEventListener('mousedown', onClick);
-        document.addEventListener('mousemove', onMove);
         window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
         
-        loadLevel();
-        updateUI();
-        animate();
-    }
-    
-    function createStructure(x,y,z) {
-        const grp = new THREE.Group();
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(10, 4, 1), mats.stone); wall.position.set(0,2,-5); grp.add(wall);
-        const wall2 = wall.clone(); wall2.position.set(0,2,5); grp.add(wall2);
-        const wall3 = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 10), mats.stone); wall3.position.set(-5,2,0); grp.add(wall3);
-        const wall4 = wall3.clone(); wall4.position.set(5,2,0); grp.add(wall4);
-        const roof = new THREE.Mesh(new THREE.BoxGeometry(11, 0.5, 11), mats.wood); roof.position.set(0,4.2,0); grp.add(roof);
-        grp.position.set(x,y,z); scene.add(grp);
-    }
-    
-    function loadLevel() {
-        if(currentQ >= config.questions.length) { showMsg("VICTORY!", "#55ff55"); return; }
-        // Clear old
-        targets.forEach(t => scene.remove(t)); targets = [];
+        document.addEventListener('mousedown', () => {
+            if(!state.active) return;
+            if(!document.pointerLockElement) document.body.requestPointerLock();
+            else shoot();
+        });
         
-        const q = config.questions[currentQ];
-        const el = document.getElementById('q-text');
-        if(q.q.includes('$')) katex.render(q.q.replace(/\$/g,''), el); else el.innerText = q.q;
+        document.addEventListener('mousemove', (e) => {
+            if(document.pointerLockElement) {
+                camera.rotation.y -= e.movementX * 0.003;
+                camera.rotation.x -= e.movementY * 0.003;
+                camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+            }
+        });
+    }
+
+    function startGame() {
+        document.getElementById('overlay').style.display = 'none';
+        state.active = true;
+        loadQuestion();
+        document.body.requestPointerLock();
+    }
+
+    function loadQuestion() {
+        if(state.qIdx >= QUESTIONS.length) { endGame(true); return; }
+        
+        targets.forEach(t => scene.remove(t)); targets = [];
+        const q = QUESTIONS[state.qIdx];
+        document.getElementById('q-text').innerText = q.q;
         
         q.a.forEach((ans, i) => {
             const group = new THREE.Group();
-            // Mob Body
-            const mat = new THREE.MeshLambertMaterial({color: i===q.c ? 0x2E7D32 : 0xC62828}); // Green correct, Red wrong (hidden logic for now, or visual hint?) Let's make them same color to force reading
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.5), new THREE.MeshLambertMaterial({color: 0x3C50C4}));
-            body.position.y = 0.9; 
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshLambertMaterial({map: getTex('#ffe0bd')}));
-            head.position.y = 2.1;
             
-            // Text Label
-            const canvas = document.createElement('canvas'); canvas.width=256; canvas.height=64;
-            const ctx = canvas.getContext('2d'); ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,256,64);
-            ctx.fillStyle='white'; ctx.font='bold 30px Arial'; ctx.textAlign='center'; ctx.fillText(ans, 128, 42);
-            const spMap = new THREE.CanvasTexture(canvas);
-            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: spMap}));
-            sprite.position.y = 3.2; sprite.scale.set(3, 0.75, 1);
+            // Тело моба
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshLambertMaterial({color: 0x3C50C4}));
+            body.position.y = 1;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshLambertMaterial({color: 0xffccaa}));
+            head.position.y = 2.4;
             
-            group.add(body, head, sprite);
+            // Текст над головой
+            const cv = document.createElement('canvas'); cv.width=256; cv.height=64;
+            const ctx = cv.getContext('2d'); 
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,256,64);
+            ctx.fillStyle = 'white'; ctx.font = 'bold 30px Arial'; ctx.textAlign='center'; ctx.fillText(ans, 128, 42);
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv) }));
+            sp.position.y = 3.5; sp.scale.set(3, 0.75, 1);
+            
+            group.add(body, head, sp);
             
             const angle = (i / q.a.length) * Math.PI * 2;
-            const rad = 15;
-            group.position.set(Math.cos(angle)*rad, 0, Math.sin(angle)*rad);
-            group.lookAt(0,0,0);
+            group.position.set(Math.cos(angle)*10, 0, Math.sin(angle)*10);
+            group.lookAt(camera.position);
             
-            group.userData = { correct: i===q.c };
+            group.userData = { correct: i === q.c };
             scene.add(group); targets.push(group);
         });
     }
 
-    function onKey(e) {
-        const s = e.type==='keydown';
-        if(e.code==='KeyW') move.fwd=s; if(e.code==='KeyS') move.bwd=s;
-        if(e.code==='KeyA') move.left=s; if(e.code==='KeyD') move.right=s;
-        if(e.code==='Space') move.jump=s;
-        if(s && e.key==='1') { weapon='sword'; document.getElementById('slot1').classList.add('active'); document.getElementById('slot2').classList.remove('active'); }
-        if(s && e.key==='2') { weapon='bow'; document.getElementById('slot2').classList.add('active'); document.getElementById('slot1').classList.remove('active'); }
-    }
-    
-    function onMove(e) {
-        if(document.pointerLockElement) {
-            camera.rotation.y -= e.movementX * 0.002;
-            camera.rotation.x -= e.movementY * 0.002;
-            camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
-        }
-    }
-    
-    function onClick() {
-        if(!document.pointerLockElement) { document.body.requestPointerLock(); return; }
-        if(player.hp <= 0) return;
+    function shoot() {
+        beep('hit');
+        // Анимация удара
+        camera.position.z -= 0.1; setTimeout(()=>camera.position.z+=0.1, 50);
         
-        playSound(weapon==='sword'?'hit':'shoot');
+        const ray = new THREE.Raycaster();
+        ray.setFromCamera(new THREE.Vector2(0,0), camera);
+        const hits = ray.intersectObjects(targets, true);
         
-        // Weapon Logic
-        if(weapon === 'sword') {
-            const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
-            const hits = ray.intersectObjects(targets, true);
-            if(hits.length > 0 && hits[0].distance < 4) hitTarget(hits[0].object);
-        } else {
-            // Bow
-            const arrow = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,1), new THREE.MeshBasicMaterial({color:0xffffff}));
-            arrow.position.copy(camera.position); arrow.quaternion.copy(camera.quaternion);
-            arrow.translateY(-0.2);
-            const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-            arrow.userData = { vel: dir.multiplyScalar(30) };
-            scene.add(arrow); arrows.push(arrow);
+        if(hits.length > 0) {
+            let root = hits[0].object;
+            while(root.parent && root.parent.type !== 'Scene') root = root.parent;
+            
+            if(root.userData.correct) {
+                beep('win');
+                showMsg("ВЕРНО!", "#4CAF50");
+                state.qIdx++;
+                setTimeout(loadQuestion, 1000);
+            } else {
+                beep('lose');
+                state.hp--;
+                document.getElementById('hearts').innerText = "❤️".repeat(state.hp);
+                showMsg("ОШИБКА!", "#f44336");
+                if(state.hp <= 0) endGame(false);
+            }
         }
     }
     
-    function hitTarget(obj) {
-        let root = obj; while(root.parent && root.parent.type!=='Scene') root = root.parent;
-        if(root.userData.correct) {
-            playSound('coin'); showMsg("CORRECT!", "#55ff55");
-            currentQ++; setTimeout(loadLevel, 1000);
-        } else {
-            takeDamage();
-        }
+    function showMsg(text, color) {
+        const m = document.getElementById('msg');
+        m.innerText = text; m.style.color = color; m.style.opacity = 1;
+        setTimeout(() => m.style.opacity = 0, 1000);
     }
-    
-    function takeDamage() {
-        playSound('damage'); player.hp--; updateUI();
-        const fl = document.getElementById('damage-flash'); fl.style.opacity=0.8; setTimeout(()=>fl.style.opacity=0, 100);
-        if(player.hp <= 0) { document.exitPointerLock(); document.getElementById('game-over').style.display='flex'; }
-    }
-    
-    function showMsg(txt, col) {
-        const m = document.getElementById('msg'); m.innerText=txt; m.style.color=col; m.style.opacity=1;
-        setTimeout(()=>m.style.opacity=0, 1500);
-    }
-    
-    function updateUI() {
-        const h = document.getElementById('hearts'); h.innerHTML='';
-        for(let i=0; i<5; i++) {
-            const d = document.createElement('div'); d.className = 'heart ' + (i>=player.hp?'lost':'');
-            h.appendChild(d);
-        }
+
+    function endGame(win) {
+        state.active = false;
+        document.exitPointerLock();
+        document.getElementById('overlay').style.display = 'flex';
+        document.getElementById('title').innerText = win ? "ПОБЕДА!" : "GAME OVER";
+        document.getElementById('title').style.color = win ? "#4CAF50" : "#f44336";
+        document.querySelector('.btn').innerText = "ЗАНОВО";
+        document.querySelector('.btn').onclick = () => location.reload();
     }
 
     function animate() {
         requestAnimationFrame(animate);
-        const dt = 0.016;
-        
-        // Physics
-        if(player.onGround && move.jump) { player.vel.y = 8; player.onGround=false; }
-        player.vel.y -= 20 * dt;
-        
-        const dir = new THREE.Vector3();
-        const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); fwd.y=0; fwd.normalize();
-        const right = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); right.y=0; right.normalize();
-        
-        if(move.fwd) dir.add(fwd); if(move.bwd) dir.sub(fwd);
-        if(move.left) dir.sub(right); if(move.right) dir.add(right);
-        
-        if(dir.length()>0) dir.normalize().multiplyScalar(10 * dt);
-        
-        camera.position.add(dir);
-        camera.position.y += player.vel.y * dt;
-        
-        if(camera.position.y < 1.7) { camera.position.y = 1.7; player.vel.y = 0; player.onGround = true; }
-        
-        // Arrows
-        for(let i=arrows.length-1; i>=0; i--) {
-            const a = arrows[i]; a.position.add(a.userData.vel.clone().multiplyScalar(dt));
-            // Simple hit check
-            let hit = false;
-            targets.forEach(t => {
-                if(t.position.distanceTo(a.position) < 1.5) { hitTarget(t); hit=true; }
-            });
-            if(hit || a.position.y < 0 || a.position.distanceTo(camera.position)>100) { scene.remove(a); arrows.splice(i,1); }
-        }
-        
+        targets.forEach(t => t.lookAt(camera.position));
         renderer.render(scene, camera);
     }
-    
+
     init();
 <\/script>
 </body>
 </html>
 </script>
 
-<script>
-    let questions = [
-        { q: "2 + 2 = ?", a: ["4", "5", "6"], c: 0 },
-        { q: "Столица Франции?", a: ["Лондон", "Берлин", "Париж"], c: 2 }
-    ];
 
-    function renderQuestions() {
-        const c = document.getElementById('questions-container');
-        c.innerHTML = '';
+<script>
+    let questions = [{ q: "2 + 2 = ?", a: ["3", "4", "5"], c: 1 }];
+
+    function renderList() {
+        const div = document.getElementById('questions-list');
+        div.innerHTML = '';
         questions.forEach((q, i) => {
             let answersHtml = '';
             q.a.forEach((ans, ai) => {
                 answersHtml += `
-                <div class="ans-row">
-                    <input type="radio" name="q${i}" ${q.c === ai ? 'checked' : ''} onchange="updateQ(${i}, 'c', ${ai})">
-                    <input type="text" value="${ans.replace(/"/g, '&quot;')}" oninput="updateQ(${i}, 'a', ${ai}, this.value)">
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <input type="radio" name="q${i}" ${q.c===ai?'checked':''} onchange="questions[${i}].c=${ai}" style="width:20px;">
+                    <input value="${ans}" oninput="questions[${i}].a[${ai}]=this.value" placeholder="Ответ">
                 </div>`;
             });
-            
-            c.innerHTML += `
-            <div class="q-card">
-                <button class="btn-del" onclick="delQ(${i})">×</button>
-                <label>Вопрос ${i+1}</label>
-                <input type="text" value="${q.q.replace(/"/g, '&quot;')}" oninput="updateQ(${i}, 'q', null, this.value)" placeholder="Текст или формула ($...$)">
-                <div style="margin-top:10px;">
-                    <label>Ответы (выбери верный)</label>
-                    ${answersHtml}
+
+            div.innerHTML += `
+            <div class="q-block">
+                <div style="display:flex; justify-content:space-between;">
+                    <label>Вопрос ${i+1}</label>
+                    <button onclick="delQ(${i})" style="padding:2px 5px; font-size:10px; background:#d32f2f;">Удалить</button>
                 </div>
+                <input value="${q.q}" oninput="questions[${i}].q=this.value" placeholder="Текст вопроса">
+                <label>Варианты (отметь верный):</label>
+                ${answersHtml}
             </div>`;
         });
     }
 
-    function addQuestion() { questions.push({ q: "", a: ["A", "B", "C"], c: 0 }); renderQuestions(); }
-    function delQ(i) { if(questions.length > 1) { questions.splice(i, 1); renderQuestions(); } }
-    function updateQ(i, key, idx, val) {
-        if(key === 'q') questions[i].q = val;
-        if(key === 'c') questions[i].c = idx;
-        if(key === 'a') questions[i].a[idx] = val;
-    }
+    function addQuestion() { questions.push({q:"", a:["","",""], c:0}); renderList(); }
+    function delQ(i) { if(questions.length>1) { questions.splice(i,1); renderList(); } }
 
-    // --- СБОРЩИК КОДА (САМАЯ ВАЖНАЯ ЧАСТЬ) ---
-    function buildGameSource() {
-        const template = document.getElementById('game-source').innerHTML;
-        const config = { lang: document.getElementById('lang').value, questions: questions };
+    function generateFinalCode() {
+        // 1. Берем шаблон игры
+        let template = document.getElementById('game-template').innerHTML;
         
-        // 1. Вставляем конфиг JSON в шаблон
-        // .trim() важен, чтобы убрать лишние пробелы в начале/конце шаблона
-        return template.trim().replace('__CONFIG__', JSON.stringify(config));
-    }
+        // 2. Вставляем вопросы (JSON)
+        // .replace(/&lt;/g, '<') исправляет баг, если браузер экранировал шаблон
+        template = template.replace('__DATA__', JSON.stringify(questions));
 
-    function updatePreview() {
-        const src = buildGameSource();
-        const blob = new Blob([src], { type: 'text/html' });
-        document.getElementById('preview-frame').src = URL.createObjectURL(blob);
-    }
+        // 3. Кодируем в Base64 (ЧТОБЫ GENIALLY НЕ ЛОМАЛ КАВЫЧКИ)
+        // Используем кодировку UTF-8
+        const base64Game = btoa(unescape(encodeURIComponent(template)));
 
-    // --- ГЕНЕРАЦИЯ ДЛЯ GENIALLY (BASE64 МЕТОД) ---
-    function generateCode() {
-        const sourceHtml = buildGameSource();
-        
-        // Кодируем в Base64, чтобы избежать проблем с кавычками и спецсимволами
-        // utf8_to_b64 - вспомогательная функция для корректной кодировки кириллицы
-        const b64 = btoa(unescape(encodeURIComponent(sourceHtml)));
-        
-        const finalSnippet = `
-<iframe id="genially-mc" style="width:100%; height:100vh; border:none;" allow="autoplay" sandbox="allow-scripts allow-pointer-lock allow-same-origin"></iframe>
+        // 4. Создаем загрузчик для Genially
+        const loaderCode = `
+<div id="game-container" style="width:100%; height:100%; overflow:hidden;"></div>
 <script>
 (function() {
-    const b64Data = "${b64}";
-    const html = decodeURIComponent(escape(window.atob(b64Data)));
-    const blob = new Blob([html], { type: 'text/html' });
-    document.getElementById('genially-mc').src = URL.createObjectURL(blob);
+    // Распаковка игры из Base64
+    var b64 = "${base64Game}";
+    var html = decodeURIComponent(escape(window.atob(b64)));
+    
+    // Создание Blob URL
+    var blob = new Blob([html], {type: 'text/html'});
+    var url = URL.createObjectURL(blob);
+    
+    // Создание iframe
+    var ifr = document.createElement('iframe');
+    ifr.src = url;
+    ifr.style.width = "100%";
+    ifr.style.height = "100%";
+    ifr.style.border = "none";
+    ifr.allow = "autoplay; fullscreen; pointer-lock";
+    
+    document.getElementById('game-container').appendChild(ifr);
 })();
 <\/script>
 `.trim();
 
-        document.getElementById('final-code').value = finalSnippet;
-        document.getElementById('modal').style.display = 'flex';
+        document.getElementById('output-code').value = loaderCode;
     }
 
-    // Старт
-    renderQuestions();
-    setTimeout(updatePreview, 500);
+    function copyCode() {
+        const ta = document.getElementById('output-code');
+        ta.select();
+        document.execCommand('copy');
+        alert("Код скопирован! Вставляй в Genially.");
+    }
+
+    renderList();
 </script>
 
 </body>
