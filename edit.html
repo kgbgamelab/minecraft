@@ -2,288 +2,212 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Editor (Blob Fix)</title>
+    <title>Minecraft Editor (Direct Injection)</title>
     <style>
-        body { background: #121212; color: #fff; font-family: sans-serif; height: 100vh; margin: 0; display: flex; flex-direction: column; }
-        header { background: #1a1a1a; padding: 15px; border-bottom: 2px solid #4CAF50; display: flex; justify-content: space-between; align-items: center; }
-        h1 { margin: 0; color: #4CAF50; font-family: monospace; font-size: 20px; }
+        body { background: #121212; color: #fff; font-family: monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        header { background: #000; padding: 10px 20px; border-bottom: 2px solid #4CAF50; display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; color: #4CAF50; }
         .main { display: flex; flex: 1; overflow: hidden; }
-        .editor-panel { width: 400px; padding: 20px; overflow-y: auto; background: #1e1e1e; border-right: 1px solid #333; }
-        .code-panel { flex: 1; padding: 20px; background: #111; display: flex; flex-direction: column; }
+        .editor { width: 400px; background: #1a1a1a; padding: 20px; overflow-y: auto; border-right: 1px solid #333; }
+        .output { flex: 1; background: #111; padding: 20px; display: flex; flex-direction: column; }
         
-        .q-block { background: #2d2d2d; padding: 15px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #4CAF50; position: relative; }
-        .btn-del { position: absolute; top: 10px; right: 10px; background: #d32f2f; color: white; border: none; cursor: pointer; }
-        input[type="text"] { width: 100%; padding: 8px; background: #111; border: 1px solid #444; color: #fff; margin-bottom: 5px; box-sizing: border-box; }
+        .q-card { background: #2a2a2a; border-left: 3px solid #4CAF50; padding: 10px; margin-bottom: 10px; position: relative; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: #0f0; padding: 5px; box-sizing: border-box; margin-bottom: 5px; font-family: monospace; }
+        button { cursor: pointer; border: none; padding: 5px 10px; }
+        .btn-del { position: absolute; top: 5px; right: 5px; background: #d32f2f; color: white; }
+        .btn-add { width: 100%; background: #333; color: #aaa; border: 1px dashed #555; padding: 10px; }
+        .btn-gen { background: #4CAF50; color: #000; font-weight: bold; padding: 15px; width: 100%; font-size: 16px; margin-top: 10px; }
         
-        textarea { flex: 1; background: #000; color: #0f0; border: 1px solid #333; padding: 10px; font-family: monospace; resize: none; }
-        .btn-gen { background: #4CAF50; color: #000; font-weight: bold; border: none; padding: 15px; font-size: 16px; cursor: pointer; margin-top: 10px; width: 100%; }
-        .btn-gen:hover { background: #45a049; }
-        .btn-add { width: 100%; padding: 10px; background: #333; border: 1px dashed #555; color: #aaa; cursor: pointer; }
-        .btn-add:hover { border-color: #4CAF50; color: #4CAF50; }
-        .preview-btn { background: #2196F3; color: white; border: none; padding: 5px 15px; cursor: pointer; font-size: 12px; margin-left: 10px; }
+        textarea { flex: 1; background: #000; color: #0f0; border: 1px solid #555; padding: 10px; resize: none; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="display:flex; align-items:center;">
-        <h1>MINECRAFT GENERATOR 🛠️</h1>
-    </div>
-    <div style="font-size: 12px; color: #888;">Fix: Blob URL Method</div>
+    <h1>MC GENERATOR: DIRECT WRITE</h1>
+    <span style="color: #666">Метод: iframe.document.write()</span>
 </header>
 
 <div class="main">
-    <div class="editor-panel">
-        <h3>1. Настройка вопросов</h3>
-        <div id="questions-container"></div>
-        <button class="btn-add" onclick="addQuestion()">+ Добавить вопрос</button>
+    <div class="editor">
+        <h3>1. ВОПРОСЫ</h3>
+        <div id="list"></div>
+        <button class="btn-add" onclick="addQ()">+ ДОБАВИТЬ ВОПРОС</button>
     </div>
-
-    <div class="code-panel">
-        <h3>2. Код для Genially</h3>
-        <textarea id="output-code" readonly placeholder="Нажми кнопку внизу..."></textarea>
-        <button class="btn-gen" onclick="generateCode()">СГЕНЕРИРОВАТЬ КОД (BLOB)</button>
+    <div class="output">
+        <h3>2. КОД ДЛЯ GENIALLY</h3>
+        <textarea id="res" readonly placeholder="Нажми кнопку слева..."></textarea>
+        <button class="btn-gen" onclick="gen()">СГЕНЕРИРОВАТЬ</button>
     </div>
 </div>
 
-<textarea id="game-template" style="display:none;">
+<textarea id="engine" style="display:none;">
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-<meta charset="UTF-8">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<meta charset="utf-8">
 <style>
-    body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'VT323', monospace; user-select: none; }
-    #ui { position: absolute; inset: 0; pointer-events: none; }
-    #ch { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 24px; height: 24px; mix-blend-mode: difference; }
-    #ch::before { content:''; position:absolute; top:11px; left:0; width:24px; height:2px; background:#fff; }
-    #ch::after { content:''; position:absolute; top:0; left:11px; width:2px; height:24px; background:#fff; }
-    #q-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 10px 30px; border: 3px solid #fff; color: #ffeb3b; font-size: 28px; text-align: center; }
-    #stats { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; text-shadow: 2px 2px 0 #000; }
-    #hearts { font-size: 30px; letter-spacing: 5px; }
-    #slots { display: flex; justify-content: center; gap: 10px; margin-top: 5px; }
-    .slot { width: 50px; height: 50px; border: 3px solid #555; background: rgba(0,0,0,0.5); font-size: 30px; display: flex; align-items: center; justify-content: center; }
-    .slot.active { border-color: #fff; background: rgba(255,255,255,0.2); transform: scale(1.1); }
-    #ov { position: absolute; inset: 0; pointer-events: none; }
-    #dmg { position: absolute; inset: 0; background: red; opacity: 0; transition: 0.1s; }
-    #scr { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; flex-direction: column; pointer-events: auto; z-index: 999; }
-    .btn { font-size: 40px; color: #ffff55; cursor: pointer; text-decoration: underline; margin-top: 20px; pointer-events: auto; }
+body{margin:0;overflow:hidden;background:#87CEEB;font-family:monospace;user-select:none}
+#ui{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#cross{width:20px;height:20px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10}
+#cross::before,#cross::after{content:'';position:absolute;background:#fff}
+#cross::before{top:9px;left:0;width:20px;height:2px}#cross::after{top:0;left:9px;width:2px;height:20px}
+#qbox{background:rgba(0,0,0,0.7);color:#ffeb3b;padding:15px;border:3px solid #fff;font-size:24px;text-align:center;position:absolute;top:20px;min-width:300px}
+#hud{position:absolute;bottom:10px;width:100%;text-align:center;color:#fff;font-size:20px;text-shadow:2px 2px 0 #000}
+#hearts{font-size:30px;color:red}
+#msg{position:absolute;top:40%;font-size:50px;font-weight:bold;text-shadow:3px 3px 0 #000;opacity:0;transition:0.2s}
+#scr{position:absolute;inset:0;background:rgba(0,0,0,0.9);display:none;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;z-index:999;color:#fff}
+.btn{background:#4CAF50;color:#fff;padding:10px 20px;font-size:24px;cursor:pointer;margin-top:20px;border:none}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-<div id="ov"><div id="dmg"></div></div>
 <div id="ui">
-    <div id="q-box">...</div>
-    <div id="ch"></div>
-    <div id="stats">
-        <div id="hearts">❤️❤️❤️❤️❤️</div>
-        <div id="slots"><div id="s1" class="slot active">🗡️</div><div id="s2" class="slot">🏹</div></div>
-    </div>
+ <div id="qbox">Loading...</div>
+ <div id="cross"></div>
+ <div id="msg"></div>
+ <div id="hud"><div id="hearts">❤️❤️❤️❤️❤️</div></div>
 </div>
-<div id="scr">
-    <h1 id="ttl" style="font-size: 80px; color: white; margin: 0;">GAME OVER</h1>
-    <div class="btn" onclick="location.reload()">RESTART</div>
-</div>
+<div id="scr"><h1 id="title">GAME OVER</h1><button class="btn" onclick="location.reload()">RESTART</button></div>
+
 <script>
-    const DATA = {{DATA}};
-    let sc, cam, ren, wGrp;
-    let items=[], tg=[], proj=[], p = { hp: 5 }, mv = {f:0, b:0, l:0, r:0, j:0}, wp='s';
-    let qI = 0;
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
-    
-    function sfx(t) {
-        if(ac.state==='suspended') ac.resume();
-        const tm=ac.currentTime; const o=ac.createOscillator(); const g=ac.createGain();
-        o.connect(g); g.connect(ac.destination);
-        if(t==='h'){ o.type='square'; o.frequency.setValueAtTime(150,tm); g.gain.setValueAtTime(0.2,tm); g.gain.exponentialRampToValueAtTime(0.01,tm+0.1); o.start(tm); o.stop(tm+0.1); }
-        if(t==='b'){ o.type='triangle'; o.frequency.setValueAtTime(600,tm); g.gain.setValueAtTime(0.2,tm); g.gain.exponentialRampToValueAtTime(0.01,tm+0.3); o.start(tm); o.stop(tm+0.3); }
-        if(t==='w'){ o.type='sine'; o.frequency.setValueAtTime(800,tm); o.frequency.linearRampToValueAtTime(1200,tm+0.1); g.gain.setValueAtTime(0.2,tm); g.gain.exponentialRampToValueAtTime(0.01,tm+0.5); o.start(tm); o.stop(tm+0.5); }
-        if(t==='d'){ o.type='sawtooth'; o.frequency.setValueAtTime(100,tm); g.gain.setValueAtTime(0.5,tm); g.gain.linearRampToValueAtTime(0,tm+0.2); o.start(tm); o.stop(tm+0.2); }
-    }
+const DATA = {{DATA}};
+let scene,cam,ren,wGrp,targets=[],proj=[],p={hp:5},mv={f:0,b:0,l:0,r:0,j:0},wp='s',qI=0;
+const ac=new (window.AudioContext||window.webkitAudioContext)();
+function sfx(t){
+ if(ac.state==='suspended')ac.resume();
+ const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);
+ const n=ac.currentTime;
+ if(t=='h'){o.type='square';o.frequency.setValueAtTime(150,n);g.gain.exponentialRampToValueAtTime(0.01,n+0.1);o.start(n);o.stop(n+0.1)}
+ if(t=='w'){o.type='sine';o.frequency.setValueAtTime(600,n);o.frequency.linearRampToValueAtTime(1200,n+0.2);g.gain.exponentialRampToValueAtTime(0.01,n+0.5);o.start(n);o.stop(n+0.5)}
+ if(t=='d'){o.type='sawtooth';o.frequency.setValueAtTime(100,n);g.gain.linearRampToValueAtTime(0,n+0.2);o.start(n);o.stop(n+0.2)}
+}
+function tex(c){
+ const el=document.createElement('canvas');el.width=64;el.height=64;const x=el.getContext('2d');
+ x.fillStyle=c;x.fillRect(0,0,64,64);x.fillStyle='rgba(0,0,0,0.1)';for(let i=0;i<50;i++)x.fillRect(Math.random()*64,Math.random()*64,4,4);
+ const t=new THREE.CanvasTexture(el);t.magFilter=THREE.NearestFilter;return t;
+}
+const mats={g:new THREE.MeshLambertMaterial({map:tex('#4a8f3a')}),w:new THREE.MeshLambertMaterial({map:tex('#8B4513')}),s:new THREE.MeshBasicMaterial({color:0x333})};
 
-    function tx(c) {
-        const el=document.createElement('canvas'); el.width=64; el.height=64; const x=el.getContext('2d');
-        x.fillStyle=c; x.fillRect(0,0,64,64);
-        x.fillStyle='rgba(0,0,0,0.1)'; for(let i=0;i<50;i++) x.fillRect(Math.random()*64,Math.random()*64,4,4);
-        const t=new THREE.CanvasTexture(el); t.magFilter=THREE.NearestFilter; return t;
-    }
-    const mat = { g: new THREE.MeshLambertMaterial({map:tx('#4a8f3a')}), w: new THREE.MeshLambertMaterial({map:tx('#8B4513')}) };
+function init(){
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x87CEEB);scene.fog=new THREE.Fog(0x87CEEB,10,60);
+ cam=new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,0.1,100);cam.rotation.order='YXZ';
+ ren=new THREE.WebGLRenderer({antialias:false});ren.setSize(window.innerWidth,window.innerHeight);document.body.appendChild(ren.domElement);
+ scene.add(new THREE.AmbientLight(0xffffff,0.6));
+ const l=new THREE.DirectionalLight(0xffffff,0.8);l.position.set(20,50,20);scene.add(l);
+ const fl=new THREE.Mesh(new THREE.PlaneGeometry(200,200),mats.g);fl.rotation.x=-Math.PI/2;scene.add(fl);
+ 
+ for(let i=0;i<40;i++){const h=new THREE.Mesh(new THREE.BoxGeometry(1,4,1),mats.w);h.position.set(Math.random()*60-30,2,Math.random()*60-30);scene.add(h)}
+ 
+ wGrp=new THREE.Group();scene.add(wGrp);
+ const wm=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.6),mats.s);wm.position.set(0.4,-0.4,-0.6);wGrp.add(wm);
 
-    function init() {
-        sc = new THREE.Scene(); sc.background = new THREE.Color(0x87CEEB); sc.fog = new THREE.Fog(0x87CEEB, 15, 60);
-        cam = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 100); cam.rotation.order = 'YXZ';
-        ren = new THREE.WebGLRenderer({antialias:false}); ren.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(ren.domElement);
-        
-        const l = new THREE.DirectionalLight(0xffffff, 0.8); l.position.set(20,50,20); sc.add(l);
-        sc.add(new THREE.AmbientLight(0xffffff, 0.6));
-        
-        const fl = new THREE.Mesh(new THREE.PlaneGeometry(200,200), mat.g); fl.rotation.x = -Math.PI/2; sc.add(fl);
-        wGrp = new THREE.Group(); sc.add(wGrp);
-        const wm = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.6), new THREE.MeshLambertMaterial({color:0x333}));
-        wm.position.set(0.4, -0.4, -0.6); wGrp.add(wm);
+ document.onkeydown=e=>{if(e.code=='KeyW')mv.f=1;if(e.code=='KeyS')mv.b=1;if(e.code=='KeyA')mv.l=1;if(e.code=='KeyD')mv.r=1;if(e.code=='Space')mv.j=1};
+ document.onkeyup=e=>{if(e.code=='KeyW')mv.f=0;if(e.code=='KeyS')mv.b=0;if(e.code=='KeyA')mv.l=0;if(e.code=='KeyD')mv.r=0;if(e.code=='Space')mv.j=0};
+ document.onmousedown=()=>{
+  if(!document.pointerLockElement){document.body.requestPointerLock();return}
+  if(p.hp<=0)return;
+  sfx('h');wGrp.rotation.x=-0.5;setTimeout(()=>wGrp.rotation.x=0,100);
+  const r=new THREE.Raycaster();r.setFromCamera(new THREE.Vector2(0,0),cam);
+  const h=r.intersectObjects(targets,true);
+  if(h.length>0 && h[0].distance<5) hit(h[0].object);
+ };
+ document.onmousemove=e=>{if(document.pointerLockElement){cam.rotation.y-=e.movementX*0.003;cam.rotation.x-=e.movementY*0.003;cam.rotation.x=Math.max(-1.5,Math.min(1.5,cam.rotation.x))}};
+ 
+ loadQ();ani();
+}
 
-        for(let i=0;i<3;i++) { const h=new THREE.Mesh(new THREE.BoxGeometry(6,4,6), mat.w); h.position.set(Math.random()*40-20, 2, Math.random()*40-20); sc.add(h); }
+function hit(o){
+ let r=o;while(r.parent&&r.parent.type!=='Scene')r=r.parent;
+ if(r.userData.ok){
+  sfx('w');msg("CORRECT!","#4CAF50");qI++;setTimeout(loadQ,1000);
+ }else{
+  sfx('d');p.hp--;document.getElementById('hearts').innerText="❤️".repeat(p.hp);msg("WRONG!","#f44336");
+  if(p.hp<=0){document.exitPointerLock();document.getElementById('scr').style.display='flex'}
+ }
+}
 
-        lQ(); ani();
-        
-        document.onkeydown = e => {
-            if(e.code==='KeyW') mv.f=1; if(e.code==='KeyS') mv.b=1; if(e.code==='KeyA') mv.l=1; if(e.code==='KeyD') mv.r=1; if(e.code==='Space') mv.j=1;
-            if(e.key==='1') { wp='s'; document.getElementById('s1').classList.add('active'); document.getElementById('s2').classList.remove('active'); }
-            if(e.key==='2') { wp='b'; document.getElementById('s2').classList.add('active'); document.getElementById('s1').classList.remove('active'); }
-        };
-        document.onkeyup = e => { if(e.code==='KeyW') mv.f=0; if(e.code==='KeyS') mv.b=0; if(e.code==='KeyA') mv.l=0; if(e.code==='KeyD') mv.r=0; if(e.code==='Space') mv.j=0; };
-        
-        document.onmousedown = () => {
-            if(!document.pointerLockElement) { document.body.requestPointerLock(); return; }
-            if(p.hp<=0) return;
-            sfx(wp==='s'?'h':'b');
-            if(wp==='s') {
-                wGrp.rotation.x = -1; setTimeout(()=>wGrp.rotation.x=0, 150);
-                const r = new THREE.Raycaster(); r.setFromCamera(new THREE.Vector2(0,0), cam);
-                const h = r.intersectObjects(tg, true);
-                if(h.length>0 && h[0].distance < 4) hit(h[0].object);
-            } else {
-                const a = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,1), new THREE.MeshBasicMaterial({color:0xffffff}));
-                a.position.copy(cam.position); a.quaternion.copy(cam.quaternion);
-                a.userData.v = new THREE.Vector3(0,0,-1).applyQuaternion(cam.quaternion).multiplyScalar(0.8);
-                sc.add(a); proj.push(a);
-            }
-        };
-        document.onmousemove = e => {
-            if(document.pointerLockElement) {
-                cam.rotation.y -= e.movementX*0.003; cam.rotation.x -= e.movementY*0.003;
-                cam.rotation.x = Math.max(-1.5, Math.min(1.5, cam.rotation.x));
-            }
-        };
-        window.onresize = () => { cam.aspect = window.innerWidth/window.innerHeight; cam.updateProjectionMatrix(); ren.setSize(window.innerWidth, window.innerHeight); };
-    }
+function msg(t,c){const m=document.getElementById('msg');m.innerText=t;m.style.color=c;m.style.opacity=1;setTimeout(()=>m.style.opacity=0,1000)}
 
-    function hit(o) {
-        let r = o; while(r.parent && r.parent.type !== 'Scene') r = r.parent;
-        if(r.userData.ok) { sfx('w'); qI++; lQ(); } else {
-            sfx('d'); p.hp--; document.getElementById('hearts').innerText = "❤️".repeat(p.hp);
-            const ov=document.getElementById('dmg'); ov.style.opacity=0.6; setTimeout(()=>ov.style.opacity=0, 100);
-            if(p.hp<=0) end(false);
-        }
-    }
-    
-    function end(w) {
-        document.exitPointerLock();
-        const s = document.getElementById('scr'); s.style.display='flex';
-        const t = document.getElementById('ttl'); t.innerText = w ? "YOU WIN!" : "GAME OVER"; t.style.color = w ? "#55ff55" : "#ff5555";
-    }
+function loadQ(){
+ if(qI>=DATA.length){document.exitPointerLock();document.getElementById('scr').style.display='flex';document.getElementById('title').innerText="VICTORY!";return}
+ targets.forEach(t=>scene.remove(t));targets=[];
+ const q=DATA[qI];document.getElementById('qbox').innerText=q.q;
+ q.a.forEach((ans,i)=>{
+  const g=new THREE.Group();
+  const b=new THREE.Mesh(new THREE.BoxGeometry(1,2,1),new THREE.MeshLambertMaterial({color:0x3C50C4}));b.position.y=1;
+  const h=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8),new THREE.MeshLambertMaterial({color:0xffccaa}));h.position.y=2.4;
+  const cv=document.createElement('canvas');cv.width=256;cv.height=64;const x=cv.getContext('2d');
+  x.fillStyle='rgba(0,0,0,0.6)';x.fillRect(0,0,256,64);x.fillStyle='white';x.font='30px Arial';x.textAlign='center';x.fillText(ans,128,42);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv)}));sp.position.y=3.5;sp.scale.set(3,0.75,1);
+  g.add(b,h,sp);
+  const a=(i/q.a.length)*Math.PI*2;g.position.set(Math.cos(a)*10,0,Math.sin(a)*10);g.lookAt(cam.position);
+  g.userData={ok:i==q.c};scene.add(g);targets.push(g);
+ });
+}
 
-    function lQ() {
-        if(qI >= DATA.length) { end(true); return; }
-        tg.forEach(t=>sc.remove(t)); tg=[];
-        const q = DATA[qI]; document.getElementById('q-box').innerText = q.q;
-        q.a.forEach((an, i) => {
-            const g = new THREE.Group();
-            const b = new THREE.Mesh(new THREE.BoxGeometry(1,2,1), new THREE.MeshLambertMaterial({color:0x3C50C4})); b.position.y=1;
-            const h = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8), new THREE.MeshLambertMaterial({map:mat.g})); h.position.y=2.4;
-            const cv=document.createElement('canvas'); cv.width=256; cv.height=64; const cx=cv.getContext('2d');
-            cx.fillStyle='rgba(0,0,0,0.6)'; cx.fillRect(0,0,256,64); cx.strokeStyle='white'; cx.strokeRect(2,2,252,60);
-            cx.fillStyle='white'; cx.font='30px Arial'; cx.textAlign='center'; cx.fillText(an,128,42);
-            const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv)})); sp.position.y=3.6; sp.scale.set(3,0.75,1);
-            g.add(b,h,sp);
-            const ag = (i/q.a.length)*Math.PI*2; g.position.set(Math.cos(ag)*15, 0, Math.sin(ag)*15); g.lookAt(cam.position);
-            g.userData = { ok: i===q.c }; sc.add(g); tg.push(g);
-        });
-    }
-
-    function ani() {
-        requestAnimationFrame(ani);
-        let vy = p.v || 0; if(mv.j && cam.position.y<=1.7) vy=0.2; vy -= 0.01;
-        const d = new THREE.Vector3();
-        const f = new THREE.Vector3(0,0,-1).applyQuaternion(cam.quaternion); f.y=0; f.normalize();
-        const r = new THREE.Vector3(1,0,0).applyQuaternion(cam.quaternion); r.y=0; r.normalize();
-        if(mv.f) d.add(f); if(mv.b) d.sub(f); if(mv.l) d.sub(r); if(mv.r) d.add(r);
-        cam.position.add(d.normalize().multiplyScalar(0.2));
-        cam.position.y += vy; if(cam.position.y < 1.7) { cam.position.y=1.7; vy=0; } p.v = vy;
-        wGrp.position.copy(cam.position); wGrp.quaternion.copy(cam.quaternion);
-        wGrp.translateX(0.4); wGrp.translateY(-0.4); wGrp.translateZ(-0.6);
-        for(let i=proj.length-1; i>=0; i--) {
-            const a=proj[i]; a.position.add(a.userData.v);
-            let h=false; tg.forEach(t => { if(t.position.distanceTo(a.position)<1.5) { hit(t); h=true; } });
-            if(h || a.position.distanceTo(cam.position)>50) { sc.remove(a); proj.splice(i,1); }
-        }
-        tg.forEach(t=>t.lookAt(cam.position)); ren.render(sc, cam);
-    }
-    init();
+function ani(){
+ requestAnimationFrame(ani);
+ let vy=p.v||0;if(mv.j&&cam.position.y<=1.7)vy=0.2;vy-=0.01;
+ const d=new THREE.Vector3(),f=new THREE.Vector3(0,0,-1).applyQuaternion(cam.quaternion),r=new THREE.Vector3(1,0,0).applyQuaternion(cam.quaternion);
+ f.y=0;r.y=0;f.normalize();r.normalize();
+ if(mv.f)d.add(f);if(mv.b)d.sub(f);if(mv.l)d.sub(r);if(mv.r)d.add(r);
+ cam.position.add(d.normalize().multiplyScalar(0.15));
+ cam.position.y+=vy;if(cam.position.y<1.7){cam.position.y=1.7;vy=0}p.v=vy;
+ wGrp.position.copy(cam.position);wGrp.quaternion.copy(cam.quaternion);wGrp.translateX(0.4);wGrp.translateY(-0.4);wGrp.translateZ(-0.6);
+ targets.forEach(t=>t.lookAt(cam.position));
+ ren.render(scene,cam);
+}
+init();
 </script>
 </body>
 </html>
 </textarea>
 
 <script>
-    let questions = [{ q: "2 + 2 = ?", a: ["3", "4", "5"], c: 1 }];
-
-    function renderList() {
-        const c = document.getElementById('questions-container'); c.innerHTML = '';
-        questions.forEach((q, i) => {
-            let ah = '';
-            q.a.forEach((ans, ai) => {
-                ah += `<div style="display:flex; gap:5px; margin-top:5px;">
-                    <input type="radio" name="q${i}" ${q.c===ai ? 'checked' : ''} onchange="updQ(${i},'c',${ai})">
-                    <input type="text" value="${ans.replace(/"/g,'&quot;')}" oninput="updQ(${i},'a',${ai},this.value)">
-                </div>`;
+    let qs = [{q:"2 + 2 = ?", a:["3","4","5"], c:1}];
+    
+    function render(){
+        const l=document.getElementById('list'); l.innerHTML='';
+        qs.forEach((q,i)=>{
+            let ah='';
+            q.a.forEach((an,ai)=>{
+                ah+=`<div style="display:flex;gap:5px;margin-top:2px"><input type="radio" name="r${i}" ${q.c==ai?'checked':''} onchange="qs[${i}].c=${ai}"><input value="${an}" oninput="qs[${i}].a[${ai}]=this.value"></div>`;
             });
-            c.innerHTML += `<div class="q-block">
-                <button class="btn-del" onclick="delQ(${i})">X</button>
-                <label>Вопрос:</label><input type="text" value="${q.q.replace(/"/g,'&quot;')}" oninput="updQ(${i},'q',null,this.value)">
-                <label>Ответы:</label>${ah}
-            </div>`;
+            l.innerHTML+=`<div class="q-card"><button class="btn-del" onclick="qs.splice(${i},1);render()">x</button><label>Вопрос:</label><input value="${q.q}" oninput="qs[${i}].q=this.value"><label>Ответы:</label>${ah}</div>`;
         });
     }
-
-    function addQuestion() { questions.push({q:"", a:["","",""], c:0}); renderList(); }
-    function delQ(i) { if(questions.length > 1) { questions.splice(i,1); renderList(); } }
-    function updQ(i, k, idx, v) { 
-        if(k==='q') questions[i].q=v; 
-        if(k==='c') questions[i].c=idx; 
-        if(k==='a') questions[i].a[idx]=v; 
-    }
-
-    function generateCode() {
-        // 1. Берем код игры
-        let gameCode = document.getElementById('game-template').value;
+    function addQ(){ qs.push({q:"",a:["","",""],c:0}); render(); }
+    
+    function gen() {
+        // 1. Берем шаблон
+        let code = document.getElementById('engine').value;
         // 2. Вставляем вопросы
-        gameCode = gameCode.replace('{{DATA}}', JSON.stringify(questions));
+        code = code.replace('{{DATA}}', JSON.stringify(qs));
+        // 3. Экранируем для JS строки (превращаем в безопасный JSON)
+        let safeCode = JSON.stringify(code);
         
-        // 3. СОЗДАЕМ ЗАГРУЗЧИК ЧЕРЕЗ BLOB (Решение проблемы CONTENT NOT FOUND)
-        // Мы упаковываем весь HTML в JSON-строку, чтобы безопасно передать в скрипт
-        const safeGameString = JSON.stringify(gameCode);
-
-        const loaderCode = `
-<div id="game-container" style="width: 100%; height: 100%; overflow: hidden;"></div>
+        // 4. Генерируем "Direct Write" скрипт
+        let final = `
+<div id="game-container" style="width:100%;height:100%;background:#000"></div>
 <script>
-(function() {
-    // 1. Получаем код игры как строку
-    var htmlContent = ${safeGameString};
-    
-    // 2. Создаем Blob (виртуальный файл в памяти)
-    var blob = new Blob([htmlContent], { type: 'text/html' });
-    var url = URL.createObjectURL(blob);
-    
-    // 3. Создаем iframe и назначаем ему URL
-    var iframe = document.createElement('iframe');
-    iframe.style.cssText = "width:100%; height:100%; border:none;";
-    iframe.allow = "autoplay; fullscreen; pointer-lock;";
-    iframe.src = url;
-    
-    // 4. Вставляем
-    document.getElementById('game-container').appendChild(iframe);
+(function(){
+  var c = document.getElementById('game-container');
+  var f = document.createElement('iframe');
+  f.style.width="100%"; f.style.height="100%"; f.style.border="none";
+  f.allow = "autoplay; fullscreen; pointer-lock"; 
+  c.appendChild(f);
+  
+  var d = f.contentWindow.document;
+  d.open();
+  d.write(${safeCode});
+  d.close();
 })();
-<\/script>
-`.trim();
-
-        document.getElementById('output-code').value = loaderCode;
+<\/script>`.trim();
+        
+        document.getElementById('res').value = final;
     }
-
-    renderList();
+    render();
 </script>
-
 </body>
 </html>
